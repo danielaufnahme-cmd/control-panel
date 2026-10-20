@@ -1,0 +1,340 @@
+{% extends "base.html" %}
+{% load static nimbus %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/pages/settings.css' %}">{% endblock %}
+
+{% block content %}
+<div class="st-shell">
+<div class="st-layout">
+  {# ---- Vertical section nav with a sliding indicator ------------------------- #}
+  <aside class="st-aside" data-animate="fade-in">
+    <nav class="st-nav" data-settings-nav role="tablist" aria-orientation="vertical" aria-label="Settings sections">
+      <span class="st-nav__indicator" aria-hidden="true"></span>
+      <button class="st-nav__item is-active" type="button" role="tab" data-section="profile"><span>Profile</span></button>
+      <button class="st-nav__item" type="button" role="tab" data-section="notifications"><span>Notifications</span></button>
+      <button class="st-nav__item" type="button" role="tab" data-section="appearance"><span>Appearance</span></button>
+      <button class="st-nav__item" type="button" role="tab" data-section="team"><span>Team</span></button>
+      <button class="st-nav__item" type="button" role="tab" data-section="billing"><span>Billing</span></button>
+      <button class="st-nav__item" type="button" role="tab" data-section="api"><span>API keys</span></button>
+    </nav>
+    {# Narrow layouts: the section list becomes a dropdown (custom select, see settings.js). #}
+    <select class="select st-nav-select" data-nav-select data-xs-class="st-nav-picker" aria-label="Settings section">
+      <option value="profile">Profile</option><option value="notifications">Notifications</option>
+      <option value="appearance">Appearance</option><option value="team">Team</option>
+      <option value="billing">Billing</option><option value="api">API keys</option>
+    </select>
+  </aside>
+
+  <form class="st-panels" data-settings-form autocomplete="off" novalidate>
+    {# ================= PROFILE ================= #}
+    <section class="st-panel" data-panel="profile" role="tabpanel" aria-label="Profile">
+      <div class="card">
+        <div class="card-header"><div><h3 class="card-title">Public profile</h3><p class="card-subtitle">Shown to members of your workspace and to client contacts.</p></div></div>
+        <div class="st-profile-head">
+          <span class="avatar avatar--xl st-avatar" data-avatar>AR</span>
+          <div class="grow">
+            <div class="st-profile-name truncate" data-preview-name>Alex Rowan</div>
+            <div class="text-subtle truncate" data-preview-email>alex@controlpanel.example</div>
+          </div>
+          <button class="btn btn--sm" type="button" data-fake-upload><span>Upload photo</span></button>
+        </div>
+        <div class="form-grid mt-6">
+          <div class="field"><label class="label" for="st-name">Full name</label><input class="input" id="st-name" name="name" value="Alex Rowan"></div>
+          <div class="field"><label class="label" for="st-email">Email</label><input class="input" id="st-email" name="email" type="email" value="alex@controlpanel.example"></div>
+          <div class="field"><label class="label" for="st-title">Title</label><input class="input" id="st-title" name="title" value="Workspace admin"></div>
+          <div class="field"><label class="label" for="st-tz">Time zone</label>
+            <select class="select" id="st-tz" name="timezone">
+              <option value="utc">UTC</option>
+              <option value="cet" selected>Central European (UTC+1)</option>
+              <option value="est">Eastern (UTC-5)</option>
+              <option value="pst">Pacific (UTC-8)</option>
+              <option value="jst">Japan (UTC+9)</option>
+            </select>
+          </div>
+          <div class="field span-2">
+            <div class="row-between"><label class="label" for="st-bio">Bio</label><span class="hint num" data-bio-count>0 / 200</span></div>
+            <textarea class="textarea" id="st-bio" name="bio" maxlength="200" rows="3">Operations lead for client accounts in EMEA.</textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card st-danger">
+        <div class="card-header"><div><h3 class="card-title">Danger zone</h3><p class="card-subtitle">These actions cannot be undone.</p></div></div>
+        <div class="st-row">
+          <div><div class="st-row__label">Transfer ownership</div><div class="st-row__hint">Hand the workspace to another admin.</div></div>
+          <button class="btn btn--sm" type="button" data-transfer>Transfer</button>
+        </div>
+        <div class="st-row">
+          <div><div class="st-row__label">Delete workspace</div><div class="st-row__hint">Removes all projects, contacts and messages.</div></div>
+          <button class="btn btn--sm st-destructive" type="button" data-open-modal="st-delete-modal">Delete workspace</button>
+        </div>
+      </div>
+    </section>
+
+    {# ================= NOTIFICATIONS ================= #}
+    <section class="st-panel" data-panel="notifications" role="tabpanel" aria-label="Notifications" hidden>
+      <div class="card">
+        <div class="card-header"><div><h3 class="card-title">Email notifications</h3><p class="card-subtitle">Choose which events send an email.</p></div>
+          <button class="btn btn--sm btn--ghost" type="button" data-test-notif><span>Send test</span></button></div>
+        {% for key, label, hint, on in notification_rows %}
+        <label class="st-row st-row--switch">
+          <div><div class="st-row__label">{{ label }}</div><div class="st-row__hint">{{ hint }}</div></div>
+          <span class="switch"><input type="checkbox" name="notify_{{ key }}" {% if on %}checked{% endif %}><span class="switch-track"></span></span>
+        </label>
+        {% endfor %}
+      </div>
+      <div class="card">
+        <div class="card-header"><div><h3 class="card-title">Delivery</h3><p class="card-subtitle">How often summary emails are sent.</p></div></div>
+        <div class="st-row">
+          <div><div class="st-row__label">Digest frequency</div><div class="st-row__hint">Applies to project updates and mentions.</div></div>
+          <div class="tabs tabs--pill" data-tabs data-mirror="digest">
+            <button class="tab" type="button" data-tab="realtime">Real-time</button>
+            <button class="tab is-active" type="button" data-tab="daily">Daily</button>
+            <button class="tab" type="button" data-tab="weekly">Weekly</button>
+          </div>
+          <input type="hidden" name="digest" value="daily">
+        </div>
+        <label class="st-row st-row--switch">
+          <div><div class="st-row__label">Quiet hours</div><div class="st-row__hint">Pause push notifications overnight.</div></div>
+          <span class="switch"><input type="checkbox" name="quiet" data-toggles="#st-quiet"><span class="switch-track"></span></span>
+        </label>
+        <div class="st-collapse" id="st-quiet">
+          <div class="st-collapse__inner">
+            <div class="form-grid st-quiet-grid">
+              <div class="field"><label class="label" for="st-q-from">From</label><input class="input" id="st-q-from" name="quiet_from" type="time" value="22:00"></div>
+              <div class="field"><label class="label" for="st-q-to">To</label><input class="input" id="st-q-to" name="quiet_to" type="time" value="07:00"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    {# ================= APPEARANCE (live, saved automatically) ================= #}
+    <section class="st-panel" data-panel="appearance" role="tabpanel" aria-label="Appearance" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div><h3 class="card-title">Appearance</h3><p class="card-subtitle">Changes apply instantly and are remembered on this device.</p></div>
+          <span class="st-autosave" data-autosave aria-live="polite">Saved</span>
+        </div>
+
+        <div class="st-block">
+          <div class="st-row__label">Theme</div>
+          <div class="st-themes" role="radiogroup" aria-label="Theme">
+            {% for value, label in theme_choices %}
+            <label class="st-theme">
+              <input type="radio" name="theme" value="{{ value }}" data-live>
+              <span class="st-theme__preview st-theme__preview--{{ value }}" aria-hidden="true">
+                <i class="st-tp-side"></i><i class="st-tp-bar"></i><i class="st-tp-card"></i><i class="st-tp-card st-tp-card--2"></i><i class="st-tp-accent"></i>
+              </span>
+              <span class="st-theme__label">{{ label }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="st-block">
+          <div class="row-between"><div class="st-row__label">Accent color</div><span class="text-subtle" data-accent-name>Teal</span></div>
+          <div class="st-accents" role="radiogroup" aria-label="Accent color">
+            {% for value, label in accent_choices %}
+            <label class="st-accent" data-tooltip="{{ label }}">
+              <input type="radio" name="accent" value="{{ value }}" data-live data-label="{{ label }}"{% if forloop.first %} checked{% endif %}>
+              <span class="st-accent__dot" data-accent-dot="{{ value }}"></span>
+            </label>
+            {% endfor %}
+          </div>
+          <div class="st-preview" aria-hidden="true">
+            <button class="btn btn--primary btn--sm" type="button" tabindex="-1"><span>Primary</span></button>
+            <button class="btn btn--soft btn--sm" type="button" tabindex="-1">Soft</button>
+            <span class="switch"><input type="checkbox" checked tabindex="-1"><span class="switch-track"></span></span>
+            <div class="progress progress--sm grow" style="--value: 64"><div class="progress-bar"></div></div>
+            <span class="st-preview__link">Link</span>
+          </div>
+        </div>
+
+        <div class="st-row">
+          <div><div class="st-row__label">Density</div><div class="st-row__hint">Tighter spacing fits more on screen.</div></div>
+          <div class="tabs tabs--pill" data-tabs data-density-tabs>
+            <button class="tab is-active" type="button" data-tab="comfortable">Comfortable</button>
+            <button class="tab" type="button" data-tab="compact">Compact</button>
+          </div>
+        </div>
+        <label class="st-row st-row--switch">
+          <div><div class="st-row__label">Collapsed sidebar</div><div class="st-row__hint">Icons only. Toggle anytime with <span class="kbd">[</span></div></div>
+          <span class="switch"><input type="checkbox" data-live data-sidebar-switch><span class="switch-track"></span></span>
+        </label>
+      </div>
+    </section>
+
+    {# ================= TEAM ================= #}
+    <section class="st-panel" data-panel="team" role="tabpanel" aria-label="Team" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div><h3 class="card-title">Members</h3><p class="card-subtitle"><span class="num" data-seat-count>{{ team|length }}</span> of 10 seats used</p></div>
+        </div>
+        <div class="progress progress--sm" data-progress="{{ team|length }}0" data-seats><div class="progress-bar"></div></div>
+        <div class="st-invite mt-4">
+          <input class="input" type="email" placeholder="colleague@company.example" aria-label="Invite by email" data-invite-email data-live>
+          <select class="select" aria-label="Role" data-invite-role data-live>
+            <option value="member">Member</option><option value="admin">Admin</option><option value="viewer">Viewer</option>
+          </select>
+          <button class="btn btn--primary" type="button" data-invite><span>Invite</span></button>
+        </div>
+        <div class="st-team" data-team>
+          {% for m in team %}
+          <div class="st-member" data-member="{{ m.id }}">
+            <span class="avatar avatar--sm">{{ m.initials }}</span>
+            <div class="grow" style="min-width:0">
+              <div class="list-item__title truncate">{{ m.name }}</div>
+              <div class="list-item__meta truncate">{{ m.email }}</div>
+            </div>
+            {% if m.name == current_user.name %}
+              <span class="text-subtle st-owner">Owner</span>
+            {% else %}
+              <select class="select st-role" name="role_{{ m.id }}" aria-label="Role for {{ m.name }}">
+                <option value="admin"{% if forloop.counter|divisibleby:3 %} selected{% endif %}>Admin</option>
+                <option value="member"{% if not forloop.counter|divisibleby:3 %} selected{% endif %}>Member</option>
+                <option value="viewer">Viewer</option>
+              </select>
+              <button class="icon-btn icon-btn--sm" type="button" data-remove-member aria-label="Remove {{ m.name }}" data-tooltip="Remove">{% icon "x" %}</button>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    {# ================= BILLING ================= #}
+    <section class="st-panel" data-panel="billing" role="tabpanel" aria-label="Billing" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div><h3 class="card-title">Plan</h3><p class="card-subtitle">Pro plan, billed per seat.</p></div>
+          <div class="tabs tabs--pill" data-tabs data-mirror="billing_cycle" data-cycle-tabs>
+            <button class="tab is-active" type="button" data-tab="monthly">Monthly</button>
+            <button class="tab" type="button" data-tab="yearly">Yearly</button>
+          </div>
+          <input type="hidden" name="billing_cycle" value="monthly">
+        </div>
+        <div class="st-plan">
+          <div>
+            <div class="row" style="--gap: 10px; align-items: baseline">
+              <span class="num-lg num" data-price data-prefix="$">$49</span>
+              <span class="text-muted">per seat / month</span>
+              <span class="st-save-badge" data-save-badge>Save 20.0%</span>
+            </div>
+            <ul class="st-features">
+              <li>Unlimited projects and contacts</li>
+              <li>Advanced analytics and exports</li>
+              <li>Priority support</li>
+            </ul>
+          </div>
+          <div class="st-usage">
+            {% for u in usage_rows %}
+            <div class="st-usage__row">
+              <div class="st-usage__head"><span class="text-muted">{{ u.label }}</span><span class="num st-usage__value">{{ u.text }}</span></div>
+              <div class="progress progress--sm" data-progress="{{ u.pct }}"><div class="progress-bar"></div></div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><h3 class="card-title">Payment method</h3><p class="card-subtitle">Charged on the 1st of each month.</p></div>
+          <button class="btn btn--sm" type="button" data-update-card>Update</button></div>
+        <div class="st-card-row">
+          <div class="grow"><div class="num">Visa ending in 4242</div><div class="text-subtle">Expires 08/2028</div></div>
+          <span class="text-subtle">Default</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div><h3 class="card-title">Invoices</h3><p class="card-subtitle">Billing history.</p></div></div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Invoice</th><th>Date</th><th class="st-num">Amount</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {% for inv in invoices %}
+              <tr>
+                <td class="num">{{ inv.number }}</td>
+                <td class="text-muted">{{ inv.date|date:"M j, Y" }}</td>
+                <td class="num st-num">{{ inv.amount|money:2 }}</td>
+                <td class="text-muted">Paid</td>
+                <td style="text-align:right"><button class="btn btn--sm btn--ghost" type="button" data-invoice="{{ inv.number }}"><span>PDF</span></button></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    {# ================= API KEYS ================= #}
+    <section class="st-panel" data-panel="api" role="tabpanel" aria-label="API keys" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div><h3 class="card-title">API keys</h3><p class="card-subtitle">Keys grant full access. Keep them secret.</p></div>
+          <button class="btn btn--sm btn--primary" type="button" data-create-key><span>Create key</span></button>
+        </div>
+        <div class="st-keys" data-keys>
+          {% for k in api_keys %}
+          <div class="st-key" data-key="{{ k.key }}">
+            <div class="st-key__info">
+              <div class="row" style="--gap: 8px"><span class="st-key__name">{{ k.name }}</span><span class="text-subtle st-env">{{ k.env }}</span></div>
+              <code class="st-key__value" data-key-value>{{ k.masked }}</code>
+              <div class="text-subtle st-key__meta">Created {{ k.created }} · last used {{ k.used }}</div>
+            </div>
+            <div class="st-key__actions">
+              <button class="icon-btn icon-btn--sm" type="button" data-reveal aria-label="Reveal key" aria-pressed="false" data-tooltip="Reveal">{% icon "eye" %}</button>
+              <button class="icon-btn icon-btn--sm st-copy" type="button" data-copy aria-label="Copy key" data-tooltip="Copy">
+                <svg class="icon st-copy__copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                <svg class="icon st-copy__check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                <span class="st-copied" aria-hidden="true">Copied</span>
+              </button>
+              <button class="icon-btn icon-btn--sm" type="button" data-revoke aria-label="Revoke key" data-tooltip="Revoke">{% icon "trash" %}</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </form>
+</div>
+</div>
+
+{# ---- Sticky save bar: slides up only when something changed --------------- #}
+<div class="st-savebar" data-savebar aria-hidden="true">
+  <div class="st-savebar__inner" role="region" aria-label="Unsaved changes">
+    <span class="st-savebar__dot" aria-hidden="true"></span>
+    <span class="st-savebar__text"><span>Unsaved changes</span> <span class="text-subtle" data-dirty-count></span></span>
+    <button class="btn btn--ghost btn--sm" type="button" data-discard>Discard</button>
+    <button class="btn btn--primary btn--sm st-save" type="button" data-save>
+      <span class="st-save__label">Save changes</span>
+      <span class="st-save__done">Saved</span>
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block modals %}
+<dialog class="modal" id="st-delete-modal" aria-labelledby="st-delete-title">
+  <form class="modal-panel" method="dialog" data-delete-form>
+    <div class="modal-header">
+      <div><h2 id="st-delete-title">Delete workspace?</h2><p>This permanently removes everything in <span class="kbd">control-panel-demo</span>.</p></div>
+      <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+    </div>
+    <div class="modal-body">
+      <div class="st-warning"><span>12 projects, 150 contacts and 40 messages will be deleted. This can't be undone.</span></div>
+      <div class="field mt-4">
+        <label class="label" for="st-confirm">Type <span class="kbd">control-panel-demo</span> to confirm</label>
+        <input class="input" id="st-confirm" name="confirm" autocomplete="off" spellcheck="false" autofocus>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--ghost" type="button" data-close-modal>Cancel</button>
+      <button class="btn st-destructive" type="submit" data-confirm-delete disabled><span>Delete workspace</span></button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/settings.js' %}" defer></script>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% load static nimbus %}<!doctype html>
+<html lang="en" data-theme="light" data-sidebar="expanded">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ page_title|default:"Dashboard" }}{% endblock %} · {{ product_name|default:"Control Panel" }}</title>
+  <meta name="color-scheme" content="light dark">
+  {% comment %} Favicon: your mark from static/img/brand/ if present, else the generic icon. {% endcomment %}
+  <link rel="icon" href="{% if brand.mark %}{% static brand.mark %}{% else %}{% static 'img/favicon.svg' %}{% endif %}">
+
+  {% comment %} --------------------------------------------------------------------
+     Runs BEFORE first paint (blocking, inline) so there is no flash:
+       * applies saved theme, sidebar state + width, accent and density
+       * adds .js so reveal animations can hide content until revealed
+     ------------------------------------------------------------------ {% endcomment %}
+  <script>
+    (function () {
+      var d = document.documentElement;
+      d.classList.add("js");
+      try {
+        // ?theme=dark|light overrides (handy for screenshots and demos).
+        var q = /[?&]theme=(dark|light)/.exec(location.search);
+        var t = q ? q[1] : localStorage.getItem("nimbus-theme");
+        if (t === "dark" || t === "light") d.dataset.theme = t;
+        // Saved choice, or automatic icon rail on mid-size windows (901-1100px;
+        // not persisted, app.js keeps it in sync on resize).
+        var mid = window.matchMedia("(min-width: 901px) and (max-width: 1100px)").matches;
+        if (mid || localStorage.getItem("nimbus-sidebar") === "collapsed") d.dataset.sidebar = "collapsed";
+        var w = parseInt(localStorage.getItem("nimbus-sidebar-w"), 10);
+        if (w >= 200 && w <= 360) d.style.setProperty("--sidebar-w", w + "px");
+        // Content-width bucket for the shared grid (app.js keeps it live):
+        // viewport - sidebar, capped at --page-max, minus page padding.
+        var vw = window.innerWidth, sb = vw <= 900 ? 0 : d.dataset.sidebar === "collapsed" ? 68 : (w >= 200 && w <= 360 ? w : 248);
+        var cw = Math.min(vw - sb, 1600) - (vw <= 900 ? 32 : 64);
+        d.dataset.content = cw >= 900 ? "lg" : cw >= 560 ? "md" : "sm";
+        // Settings > Appearance (static/js/pages/settings.js writes these keys;
+        // the token rules live in tokens.css). teal = default, so no attribute.
+        var ac = localStorage.getItem("nimbus-accent");
+        if (/^(navy|mint|graphite)$/.test(ac || "")) d.dataset.accent = ac;
+        if (localStorage.getItem("nimbus-density") === "compact") d.dataset.density = "compact";
+      } catch (e) {}
+    })();
+  </script>
+
+  <link rel="preload" href="{% static 'fonts/InterVariable.woff2' %}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/components.css' %}">
+  <link rel="stylesheet" href="{% static 'css/animations.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="page-{{ current_page|default:'none' }}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="nav-progress" aria-hidden="true"></div>
+
+  <div class="app">
+    {% include "components/sidebar.html" %}
+    <div class="sidebar-backdrop" data-sidebar-close aria-hidden="true"></div>
+
+    <div class="app-main">
+      {% comment %} No top bar: the sidebar's active item says where you are. On small
+         screens a slim bar holds the menu button + logo (hidden on desktop). {% endcomment %}
+      <div class="mobile-bar">
+        <button class="icon-btn" type="button" data-sidebar-open aria-label="Open navigation">{% icon "menu" %}</button>
+        <a class="brand" href="{% url 'overview' %}" aria-label="Control Panel home">{% include "components/logo.html" %}</a>
+      </div>
+      <main id="main" class="page" aria-label="{{ page_title|default:'Dashboard' }}">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% block modals %}{% endblock %}
+  {% include "components/shortcuts_modal.html" %}
+  <div class="toast-region" aria-live="polite"></div>
+
+  <script src="{% static 'vendor/chart.umd.min.js' %}" defer></script>
+  <script src="{% static 'js/motion.js' %}" defer></script>
+  <script src="{% static 'js/theme.js' %}" defer></script>
+  <script src="{% static 'js/charts.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

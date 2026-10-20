@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% load static nimbus %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/pages/projects.css' %}">{% endblock %}
+
+{% block content %}
+{# ---- Toolbar: filter chips + view toggle + new project -------------------- #}
+<div class="page-toolbar" data-animate="fade-in">
+  <div class="row wrap" style="--gap: 8px" data-project-filters role="group" aria-label="Filter projects">
+    <button class="chip is-active" type="button" data-filter="all" aria-pressed="true">All projects <span class="count" data-filter-count="all">{{ projects_data|length }}</span></button>
+    <button class="chip" type="button" data-filter="mine" aria-pressed="false">My projects <span class="count" data-filter-count="mine"></span></button>
+    <button class="chip" type="button" data-filter="soon" aria-pressed="false">Due in 60 days <span class="count" data-filter-count="soon"></span></button>
+    <button class="chip" type="button" data-filter="large" aria-pressed="false">Budget over $75k <span class="count" data-filter-count="large"></span></button>
+  </div>
+  <div class="row pj-toolbar-actions">
+    <div class="tabs tabs--pill pj-view-toggle" data-tabs data-tabs-target="#project-views" aria-label="View">
+      <button class="tab is-active" type="button" data-tab="board">{% icon "grid" "icon--sm" %}<span>Board</span></button>
+      <button class="tab" type="button" data-tab="list">{% icon "list" "icon--sm" %}<span>List</span></button>
+    </div>
+    <button class="btn btn--primary" type="button" data-open-modal="pj-new-modal">{% icon "plus" %}<span>New project</span></button>
+  </div>
+</div>
+
+{# ---- Summary stats (count up) ------------------------------------------- #}
+<div class="pj-stats-wrap">
+<section class="card pj-stats" data-stagger aria-label="Project summary" data-project-stats>
+  {% for s in project_stats %}
+    <div class="pj-stat">
+      <span class="pj-stat__label">{{ s.label }}</span>
+      {% if s.suffix == "%" %}
+      <span class="num-lg num pj-stat__value" data-countup="{{ s.value }}" data-suffix="%" data-decimals="1">{{ s.value|floatformat:1 }}%</span>
+      {% else %}
+      <span class="num-lg num pj-stat__value" data-countup="{{ s.value }}" data-prefix="{{ s.prefix|default:'' }}" data-decimals="{{ s.decimals|default:0 }}">{{ s.prefix|default:'' }}{{ s.value }}</span>
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>
+</div>
+
+{# ---- Board / list views (JS renders cards from projects-data) ----------- #}
+<div class="section pj-views" id="project-views">
+  <div data-tab-panel="board">
+    <div class="pj-board-wrap" data-board-wrap>
+    <div class="pj-board" data-board data-stagger aria-label="Project board">
+      {% for value, label in status_choices %}
+        <section class="pj-column" data-column="{{ value }}" aria-label="{{ label }}">
+          <header class="pj-column__head">
+            <span class="pj-column__title pj-status pj-status--{{ value }}">{{ label }}</span>
+            <span class="pj-column__count num" data-column-count>0</span>
+            <button class="icon-btn icon-btn--sm pj-column__add" type="button" data-add-to="{{ value }}"
+                    aria-label="Add project to {{ label }}" data-tooltip="Add project">{% icon "plus" %}</button>
+          </header>
+          <div class="pj-column__list" data-column-list data-stagger></div>
+          <div class="pj-column__empty">No projects</div>
+        </section>
+      {% endfor %}
+    </div>
+    </div>
+  </div>
+
+  <div data-tab-panel="list" hidden>
+    <section class="card pj-table-card">
+      <div class="table-wrap">
+        <table class="table pj-table">
+          <thead>
+            <tr><th>Project</th><th>Status</th><th>Progress</th><th>Due</th><th>Budget</th><th>Team</th></tr>
+          </thead>
+          <tbody data-project-rows data-stagger data-stagger-delay="30"></tbody>
+        </table>
+      </div>
+      <div class="plain-empty" data-no-results hidden><strong>No projects match</strong>Try another filter.</div>
+    </section>
+  </div>
+</div>
+
+{# Icons the page script clones into JS-rendered markup. #}
+<template id="pj-icons">
+  <i data-i="calendar">{% icon "calendar" "icon--sm" %}</i>
+  <i data-i="dollar">{% icon "dollar" "icon--sm" %}</i>
+  <i data-i="folder">{% icon "folder" %}</i>
+  <i data-i="clock">{% icon "clock" "icon--sm" %}</i>
+  <i data-i="alert">{% icon "alert" "icon--sm" %}</i>
+  <i data-i="check">{% icon "check" "icon--sm" %}</i>
+  <i data-i="more">{% icon "more" "icon--sm" %}</i>
+</template>
+
+{{ projects_data|json_script:"projects-data" }}
+{{ status_choices|json_script:"project-statuses" }}
+{% endblock %}
+
+{% block modals %}
+{# ---- Project detail drawer ------------------------------------------------ #}
+<dialog class="modal drawer pj-drawer" id="pj-detail" aria-labelledby="pj-detail-title">
+  <div class="modal-panel">
+    <div class="modal-header pj-drawer__header">
+      <div class="row" style="--gap: 12px; min-width: 0">
+        <div class="grow">
+          <h2 id="pj-detail-title" class="truncate" data-d="name">Project</h2>
+          <p class="truncate" data-d="client">Client</p>
+        </div>
+      </div>
+      <div class="row" style="--gap: 2px">
+        <button class="icon-btn icon-btn--sm st-expand" type="button" data-expand aria-pressed="false" aria-label="Toggle full screen" data-tooltip="Full screen" data-tooltip-pos="bottom"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="ico-max"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></g><g class="ico-min"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/></g></svg></button>
+        <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+      </div>
+    </div>
+    <div class="modal-body pj-drawer__body">
+      <div class="tabs tabs--pill pj-status-switch" data-tabs data-status-switch aria-label="Status">
+        {% for value, label in status_choices %}<button class="tab{% if forloop.first %} is-active{% endif %}" type="button" data-tab="{{ value }}">{{ label }}</button>{% endfor %}
+      </div>
+
+      <p class="pj-drawer__desc text-muted text-sm" data-d="desc"></p>
+
+      <div class="pj-drawer__grid">
+        <div class="pj-ring-card">
+          <div class="pj-ring" data-d="ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="pj-ring__track" cx="60" cy="60" r="50" pathLength="100"/>
+              <circle class="pj-ring__value" cx="60" cy="60" r="50" pathLength="100"/>
+            </svg>
+            <div class="pj-ring__center"><strong class="num" data-d="ring-pct" data-suffix="%" data-decimals="1">0.0%</strong><span>spent</span></div>
+          </div>
+          <div class="stack grow" style="--gap: 4px; min-width: 0">
+            <span class="stat-label">Budget</span>
+            <strong class="num-lg num" data-d="budget">$0</strong>
+            <span class="pj-ring-meta"><span>Spent</span><span class="num" data-d="spent">$0</span></span>
+            <span class="pj-ring-meta"><span>Left</span><span class="num" data-d="remaining">$0</span></span>
+          </div>
+        </div>
+        <div class="pj-progress-card">
+          <div class="row-between">
+            <span class="stat-label">Progress</span>
+            <strong class="num-lg num" data-d="progress" data-suffix="%" data-decimals="1">0.0%</strong>
+          </div>
+          <div class="progress progress--lg" data-d="progressbar"><div class="progress-bar"></div></div>
+          <span class="text-subtle pj-due-line" data-d="due">Due</span>
+        </div>
+      </div>
+
+      <div class="pj-section-title row-between">
+        <h3>Milestones</h3>
+        <span class="text-xs text-subtle num" data-d="ms-count">0 / 0</span>
+      </div>
+      <ul class="pj-milestones" data-d="milestones"></ul>
+
+      <div class="pj-section-title"><h3>Team</h3></div>
+      <div class="list" data-d="team"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--ghost" type="button" data-close-modal>Close</button>
+      <button class="btn btn--primary" type="button" data-share-project>{% icon "send" %}<span>Share update</span></button>
+    </div>
+  </div>
+</dialog>
+
+{# ---- New project modal ------------------------------------------------------ #}
+<dialog class="modal" id="pj-new-modal" aria-labelledby="pj-new-title">
+  <form class="modal-panel" method="dialog" data-pj-new-form>
+    <div class="modal-header">
+      <div>
+        <h2 id="pj-new-title">New project</h2>
+        <p>Demo data. Changes are not saved.</p>
+      </div>
+      <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field span-2">
+          <label class="label" for="pj-new-name">Project name</label>
+          <input class="input" id="pj-new-name" name="name" placeholder="e.g. Nova Checkout" autofocus autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="label" for="pj-new-client">Client</label>
+          <input class="input" id="pj-new-client" name="client" placeholder="Client company" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="label" for="pj-new-budget">Budget</label>
+          <input class="input" id="pj-new-budget" name="budget" type="number" min="0" step="500" placeholder="25000">
+        </div>
+        <div class="field">
+          <label class="label" for="pj-new-status">Column</label>
+          <select class="select" id="pj-new-status" name="status">
+            {% for value, label in status_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="pj-new-due">Due date</label>
+          <input class="input" id="pj-new-due" name="due" type="date">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--ghost" type="button" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" type="submit">{% icon "check" %}<span>Create project</span></button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/projects.js' %}" defer></script>
+{% endblock %}

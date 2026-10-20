@@ -1,0 +1,3 @@
+{% comment %} Animated progress bar (fills when scrolled into view). Usage:
+   {% include "components/progress.html" with value=p.progress color=p.color size="sm" %} {% endcomment %}
+<div class="progress{% if size %} progress--{{ size }}{% endif %}" data-progress="{{ value }}" style="--c: var(--accent-{{ color|default:'indigo' }})"><div class="progress-bar"></div></div>

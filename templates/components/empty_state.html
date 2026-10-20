@@ -1,0 +1,10 @@
+{% comment %} Empty state. Usage:
+   {% include "components/empty_state.html" with icon="inbox" (icon is ignored: no decorative icons) title="No messages" text="..." action_label="Compose" action_modal="compose-modal" %} {% endcomment %}
+{% load nimbus %}
+<div class="empty-state">
+  <h3>{{ title }}</h3>
+  {% if text %}<p>{{ text }}</p>{% endif %}
+  {% if action_label %}
+    <button class="btn btn--primary" type="button" {% if action_modal %}data-open-modal="{{ action_modal }}"{% endif %}>{{ action_label }}</button>
+  {% endif %}
+</div>

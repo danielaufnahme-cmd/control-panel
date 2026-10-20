@@ -1,0 +1,3 @@
+{% comment %} Avatar. Usage: {% include "components/avatar.html" with initials=c.initials color=c.avatar_color size="sm" %}
+   size: xs | sm | (default 36px) | lg | xl.   solid=True for a filled gradient avatar. {% endcomment %}
+<span class="avatar{% if size %} avatar--{{ size }}{% endif %}{% if solid %} avatar--solid{% endif %}" style="--c: var(--accent-{{ color|default:'indigo' }})"{% if name %} title="{{ name }}"{% endif %}>{{ initials }}</span>

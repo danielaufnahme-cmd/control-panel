@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% load static nimbus %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/pages/analytics.css' %}">{% endblock %}
+
+{% block content %}
+{% if not has_data %}
+<div class="grid" data-stagger>
+  <section class="card col-12">
+    {% include "components/empty_state.html" with icon="chart" title="No analytics yet" text="Analytics are shown once 14 days of traffic data are available." %}
+  </section>
+</div>
+{% else %}
+<div class="an-root">
+
+{# ---- Toolbar: range tabs drive everything below ----------------------- #}
+<div class="page-toolbar an-toolbar" data-animate="fade-in">
+  <div class="row wrap" style="--gap: 12px">
+    <div class="tabs tabs--pill" data-tabs data-range-tabs aria-label="Date range">
+      <button class="tab" type="button" data-tab="7" data-tooltip="Last 7 days · 1" data-tooltip-pos="bottom">7D</button>
+      <button class="tab is-active" type="button" data-tab="30" data-tooltip="Last 30 days · 2" data-tooltip-pos="bottom">30D</button>
+      <button class="tab" type="button" data-tab="90" data-tooltip="Last 90 days · 3" data-tooltip-pos="bottom">90D</button>
+      <button class="tab" type="button" data-tab="365" data-tooltip="Last 12 months · 4" data-tooltip-pos="bottom">12M</button>
+    </div>
+    <span class="an-range-label" data-range-label>Last 30 days</span>
+  </div>
+  <button class="btn btn--sm" type="button" data-export>Export CSV</button>
+</div>
+
+{# ---- KPI cards (same markup as components/stat_card.html + data hooks) -- #}
+<section class="grid-auto" data-stagger aria-label="Key metrics">
+  {% for kpi in kpis %}
+  <article class="card stat-card" data-kpi="{{ forloop.counter0 }}">
+    <div class="stat-label">{{ kpi.label }}</div>
+    <div class="stat-card__main">
+      <span class="stat-value num" data-kpi-value data-countup="{{ kpi.value }}" data-prefix="{{ kpi.prefix }}" data-suffix="{{ kpi.suffix }}" data-decimals="{{ kpi.decimals }}">{{ kpi.prefix }}{{ kpi.value }}{{ kpi.suffix }}</span>
+      <span class="trend {% if kpi.change >= 0 %}trend--up{% else %}trend--down{% endif %}" data-kpi-trend>{% if kpi.change >= 0 %}+{% endif %}{{ kpi.change|floatformat:1 }}%</span>
+    </div>
+    <div class="sparkline stat-card__spark" data-kpi-spark data-sparkline="{{ kpi.spark|join:',' }}"></div>
+  </article>
+  {% endfor %}
+</section>
+
+{# ---- Traffic (multi-series, toggle chips) + conversion funnel ------------ #}
+<div class="grid" data-stagger>
+  <section class="card card--chart col-8" aria-labelledby="traffic-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="traffic-title">Traffic</h3>
+        <p class="card-subtitle" data-traffic-subtitle>Visitors, signups and orders per day</p>
+      </div>
+      <div class="row wrap an-series" role="group" aria-label="Show series">
+        <button class="chip is-active" type="button" data-series="0" aria-pressed="true"><i class="an-key" style="--c: var(--chart-1)"></i>Visitors</button>
+        <button class="chip is-active" type="button" data-series="1" aria-pressed="true"><i class="an-key" style="--c: var(--chart-2)"></i>Signups</button>
+        <button class="chip" type="button" data-series="2" aria-pressed="false"><i class="an-key an-key--dash" style="--c: var(--chart-3)"></i>Orders</button>
+      </div>
+    </div>
+    <dl class="an-ministats">
+      <div><dt>Visitors per day</dt><dd class="num" data-ms="avg" data-countup="0">0</dd></div>
+      <div><dt>Best day <span data-ms="peak-date"></span></dt><dd class="num" data-ms="peak" data-countup="0" data-suffix=" visitors">0</dd></div>
+      <div><dt>Bounce rate</dt><dd class="num" data-ms="bounce" data-countup="0" data-suffix="%" data-decimals="1">0.0%</dd></div>
+      <div><dt>Avg. session</dt><dd class="num" data-ms="session">0m 00s</dd></div>
+    </dl>
+    <div class="chart-box" style="--h: 220px">
+      <canvas id="traffic-chart" aria-label="Visitors, signups and orders over time" role="img"></canvas>
+    </div>
+  </section>
+
+  <section class="card col-4 an-funnel-card" aria-labelledby="funnel-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="funnel-title">Conversion funnel</h3>
+        <p class="card-subtitle">Bar length on a log scale</p>
+      </div>
+    </div>
+    <div class="an-funnel" data-funnel data-stagger="fade-in"></div>
+    <div class="card-footer an-funnel-foot">
+      <span class="text-muted">Visitor-to-paid conversion</span>
+      <span class="row" style="--gap: 8px; align-items: baseline">
+        <span class="num an-funnel-total" data-funnel-total data-countup="0" data-suffix="%" data-decimals="1">0.0%</span>
+        <span class="trend trend--up" data-funnel-trend>+0.0%</span>
+      </span>
+    </div>
+  </section>
+</div>
+
+{# ---- Revenue bars + channels -------------------------------------------- #}
+<div class="grid" data-stagger>
+  <section class="card card--chart col-7" aria-labelledby="rev-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="rev-title">Revenue</h3>
+        <div class="row an-rev-total" style="--gap: 8px; align-items: baseline">
+          <span class="num" data-rev-total data-countup="0" data-prefix="$">$0</span>
+          <span class="trend trend--up" data-rev-trend>+0.0%</span>
+        </div>
+      </div>
+      <dl class="an-rev-meta">
+        <div><dt>Orders</dt><dd class="num" data-rev-orders data-countup="0">0</dd></div>
+        <div><dt>Avg. order value</dt><dd class="num" data-rev-aov data-countup="0" data-prefix="$" data-decimals="2">$0</dd></div>
+      </dl>
+    </div>
+    <div class="chart-box" style="--h: 200px">
+      <canvas id="revenue-chart" aria-label="Revenue chart" role="img"></canvas>
+    </div>
+  </section>
+
+  <section class="card col-5" aria-labelledby="channels-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="channels-title">Traffic by channel</h3>
+        <p class="card-subtitle">Visits and share of all visits</p>
+      </div>
+    </div>
+    <div class="an-share" data-channel-share aria-hidden="true"></div>
+    <div class="an-rows" data-channels data-stagger="fade-in"></div>
+  </section>
+</div>
+
+{# ---- Traffic by hour + countries ---------------------------------------- #}
+<div class="grid" data-stagger>
+  <section class="card card--chart col-8" aria-labelledby="hours-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="hours-title">Traffic by hour</h3>
+        <p class="card-subtitle">Average visitors per hour of the day</p>
+      </div>
+      <div class="tabs tabs--pill" data-tabs data-hours-tabs aria-label="Day type">
+        <button class="tab is-active" type="button" data-tab="weekday">Weekdays</button>
+        <button class="tab" type="button" data-tab="weekend">Weekends</button>
+      </div>
+    </div>
+    <div class="chart-box" style="--h: 180px">
+      <canvas id="hours-chart" aria-label="Average visitors per hour of the day" role="img"></canvas>
+    </div>
+    <p class="an-hours-summary" data-hours-summary>&nbsp;</p>
+  </section>
+
+  <section class="card col-4" aria-labelledby="countries-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="countries-title">Top countries</h3>
+        <p class="card-subtitle">Visits and share of all visits</p>
+      </div>
+    </div>
+    <div class="an-rows" data-countries></div>
+  </section>
+</div>
+
+{# ---- Top pages: sortable table with inline bars (FLIP on sort) ---------- #}
+<div class="grid" data-stagger>
+  <section class="card col-12" aria-labelledby="pages-title">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title" id="pages-title">Top pages</h3>
+        <p class="card-subtitle">Views, time on page and bounce rate</p>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="table an-pages">
+        <thead>
+          <tr>
+            <th scope="col">Page</th>
+            <th scope="col"><button class="an-sort is-active" type="button" data-sort="views" aria-sort="descending">Views</button></th>
+            <th scope="col" class="an-col-time"><button class="an-sort" type="button" data-sort="time">Avg. time on page</button></th>
+            <th scope="col" class="an-col-bounce"><button class="an-sort" type="button" data-sort="bounce">Bounce rate</button></th>
+            <th scope="col" class="an-col-change"><button class="an-sort" type="button" data-sort="change">Views change</button></th>
+          </tr>
+        </thead>
+        <tbody data-pages></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+</div>
+{{ analytics|json_script:"analytics-data" }}
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}{% if has_data %}<script src="{% static 'js/pages/analytics.js' %}" defer></script>{% endif %}{% endblock %}

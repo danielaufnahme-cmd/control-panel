@@ -1,0 +1,24 @@
+{% load static %}{% comment %} Sidebar / mobile-bar logo. No logo artwork lives in this repo.
+   Files are read from static/img/brand/ (git-ignored; see its README.md) by
+   dashboard.context_processors.brand_files():
+     brand.logo (+ brand.logo_dark)   full horizontal logo, expanded sidebar + mobile bar
+     brand.mark (+ brand.mark_dark)   square mark, collapsed rail (and the favicon in base.html)
+   Missing files, or CONTROL_PANEL_PLACEHOLDER_LOGO=1, give the neutral placeholder:
+   an outlined "CP" square + "Control Panel".
+   .brand-logo = what shows expanded, .brand-mark = what shows in the collapsed rail.
+   The *-dark variants swap in under html[data-theme="dark"]. {% endcomment %}
+{% if brand.logo %}
+<img class="brand-logo brand-img{% if brand.logo_dark %} brand-img--light{% endif %}" src="{% static brand.logo %}" alt="" decoding="async">
+{% if brand.logo_dark %}<img class="brand-logo brand-img brand-img--dark" src="{% static brand.logo_dark %}" alt="" decoding="async">{% endif %}
+{% else %}
+<span class="brand-logo brand-placeholder">
+  {% if brand.mark %}<img class="brand-placeholder__img{% if brand.mark_dark %} brand-img--light{% endif %}" src="{% static brand.mark %}" alt="" decoding="async">{% if brand.mark_dark %}<img class="brand-placeholder__img brand-img--dark" src="{% static brand.mark_dark %}" alt="" decoding="async">{% endif %}{% else %}<span class="brand-placeholder__mark" aria-hidden="true">CP</span>{% endif %}
+  <span class="brand-placeholder__name">{{ product_name|default:"Control Panel" }}</span>
+</span>
+{% endif %}
+{% if brand.mark %}
+<img class="brand-mark brand-img{% if brand.mark_dark %} brand-img--light{% endif %}" src="{% static brand.mark %}" alt="" decoding="async">
+{% if brand.mark_dark %}<img class="brand-mark brand-img brand-img--dark" src="{% static brand.mark_dark %}" alt="" decoding="async">{% endif %}
+{% else %}
+<span class="brand-mark brand-placeholder__mark" aria-hidden="true">CP</span>
+{% endif %}

@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+{% load static nimbus %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/pages/contacts.css' %}">{% endblock %}
+
+{% block content %}
+{# ---- Toolbar: actions only ------------------------------------------- #}
+<div class="page-toolbar ct-page-toolbar" data-animate="fade-in">
+  <div class="row">
+    <button class="btn" type="button" data-export><span>Export</span></button>
+    <button class="btn btn--primary" type="button" data-open-modal="add-contact-modal">Add contact</button>
+  </div>
+</div>
+
+{# ---- KPI cards (click one to filter the list by that status) ----------- #}
+{# One card split into four columns; each column filters the list by its status. #}
+<div class="ct-kpis-wrap">
+<section class="card card--flush ct-kpis" data-animate="fade-up" aria-label="Contact metrics">
+  {% for s in stats %}
+    <button class="ct-kpi" type="button" data-kpi="{{ s.status }}">
+      <span class="ct-kpi__label">{{ s.label }}</span>
+      <span class="ct-kpi__value num" data-countup="{{ s.value }}">{{ s.value }}</span>
+      <span class="ct-kpi__meta">+{{ s.change }} new in the last 30 days</span>
+      <span class="ct-kpi__spark" data-points="{{ s.spark|join:',' }}" aria-hidden="true"></span>
+    </button>
+  {% endfor %}
+</section>
+</div>
+
+{# ---- Contact list --------------------------------------------------------- #}
+<div class="grid ct-list-grid">
+  <section class="card card--flush col-12 ct-card" data-animate="fade-up" data-contacts-card aria-label="Contacts">
+    <div class="ct-toolbar">
+      <div class="ct-status-scroll">
+        <div class="tabs tabs--pill ct-status" data-tabs data-status-tabs aria-label="Filter by status">
+          {% for t in status_tabs %}
+            <button class="tab{% if forloop.first %} is-active{% endif %}" type="button" data-tab="{{ t.key }}">
+              {% if t.key != "all" %}<i class="ct-dot ct-dot--{{ t.key }}" aria-hidden="true"></i>{% endif %}{{ t.label }}
+              <span class="ct-count" data-status-count="{{ t.key }}">{{ t.count }}</span>
+            </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="ct-toolbar__right">
+        <label class="ct-search" data-search-wrap>
+          {% icon "search" %}
+          <input class="input" type="search" placeholder="Search contacts..." aria-label="Search contacts" autocomplete="off" data-ct-search>
+          <button class="ct-search__clear" type="button" aria-label="Clear search" data-search-clear>{% icon "x" "icon--sm" %}</button>
+        </label>
+
+        <div class="dropdown" data-dropdown data-sort-menu>
+          <button class="btn btn--sm ct-sort-btn" type="button" data-dropdown-trigger aria-haspopup="menu" aria-expanded="false">
+            <span>Sort: <b data-sort-label>Name</b></span>
+            <span class="ct-dir" data-sort-dir-icon>{% icon "arrow-up" "icon--sm" %}</span>
+          </button>
+          <div class="dropdown-menu" role="menu">
+            <div class="dropdown-label">Sort by</div>
+            <button class="dropdown-item" type="button" role="menuitemradio" data-sort="name" data-dropdown-close>Name<span class="ct-tick">{% icon "check" %}</span></button>
+            <button class="dropdown-item" type="button" role="menuitemradio" data-sort="company" data-dropdown-close>Company<span class="ct-tick">{% icon "check" %}</span></button>
+            <button class="dropdown-item" type="button" role="menuitemradio" data-sort="last" data-dropdown-close>Last contacted<span class="ct-tick">{% icon "check" %}</span></button>
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" type="button" data-sort-toggle data-dropdown-close>Reverse order</button>
+          </div>
+        </div>
+
+        <div class="tabs tabs--pill ct-view" data-tabs data-view-tabs aria-label="Layout">
+          <button class="tab is-active" type="button" data-tab="table" aria-label="Table view" data-tooltip="Table view" data-tooltip-pos="bottom">{% icon "list" "icon--sm" %}</button>
+          <button class="tab" type="button" data-tab="grid" aria-label="Card view" data-tooltip="Card view" data-tooltip-pos="bottom">{% icon "grid" "icon--sm" %}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ct-body" data-body>
+      <div class="table-wrap" data-table-view>
+        <table class="table ct-table">
+          <thead>
+            <tr>
+              <th class="ct-col-check"><label class="ct-check"><input type="checkbox" data-select-all aria-label="Select all visible contacts"><span></span></label></th>
+              <th><button class="ct-th-sort" type="button" data-sort-key="name">Contact <span class="ct-th-arrow">{% icon "arrow-up" "icon--sm" %}</span></button></th>
+              <th class="ct-col-company"><button class="ct-th-sort" type="button" data-sort-key="company">Company <span class="ct-th-arrow">{% icon "arrow-up" "icon--sm" %}</span></button></th>
+              <th>Status</th>
+              <th class="ct-col-tags">Tags</th>
+              <th class="ct-col-last"><button class="ct-th-sort" type="button" data-sort-key="last">Last contacted <span class="ct-th-arrow">{% icon "arrow-up" "icon--sm" %}</span></button></th>
+              <th class="ct-col-actions"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody data-rows></tbody>
+        </table>
+      </div>
+
+      <div class="ct-grid" data-cards hidden></div>
+
+      <div class="ct-empty" data-empty hidden>
+        {% include "components/empty_state.html" with icon="search" title="No contacts found" text="Nothing matches your search and filters. Try a different name, company or tag." %}
+        <div class="row ct-empty__actions">
+          <button class="btn" type="button" data-clear-filters>Clear filters</button>
+          <button class="btn btn--primary" type="button" data-open-modal="add-contact-modal">Add contact</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ct-footer" data-footer>
+      <span class="text-sm text-muted">Showing <strong class="num" data-shown>0</strong> of <strong class="num" data-matched>0</strong> contacts</span>
+      <button class="btn btn--sm" type="button" data-load-more><span>Load more</span></button>
+    </div>
+  </section>
+</div>
+
+{# ---- Bulk-action bar (slides up when rows are selected) --------------- #}
+<div class="ct-bulk" data-bulk role="region" aria-label="Bulk actions" aria-hidden="true">
+  <span class="ct-bulk__count" style="--i: 0"><strong class="num" data-bulk-count>0</strong><span>selected</span></span>
+  <button class="ct-bulk__btn ct-bulk__all" type="button" style="--i: 1" data-bulk-all>Select all <span class="num" data-bulk-all-n>0</span></button>
+  <span class="ct-bulk__sep" style="--i: 2" aria-hidden="true"></span>
+  <button class="ct-bulk__btn" type="button" style="--i: 3" data-bulk="email"><span>Email</span></button>
+  <button class="ct-bulk__btn" type="button" style="--i: 4" data-bulk="tag"><span>Tag</span></button>
+  <button class="ct-bulk__btn" type="button" style="--i: 5" data-bulk="export"><span>Export</span></button>
+  <button class="ct-bulk__btn ct-bulk__btn--danger" type="button" style="--i: 6" data-bulk="delete"><span>Delete</span></button>
+  <button class="ct-bulk__btn ct-bulk__close" type="button" style="--i: 7" data-bulk-clear aria-label="Clear selection">{% icon "x" %}</button>
+</div>
+
+{# ---- Shared "more" menu for rows/cards (fixed, so table overflow can't clip it) #}
+<div class="dropdown ct-row-menu" data-dropdown data-row-menu>
+  <div class="dropdown-menu" role="menu">
+    <button class="dropdown-item" type="button" data-menu="view" data-dropdown-close>View details</button>
+    <button class="dropdown-item" type="button" data-menu="copy" data-dropdown-close>Copy email</button>
+    <button class="dropdown-item" type="button" data-menu="vip" data-dropdown-close><span data-menu-vip-label>Mark as VIP</span></button>
+    <div class="dropdown-divider"></div>
+    <button class="dropdown-item dropdown-item--danger" type="button" data-menu="delete" data-dropdown-close>Delete</button>
+  </div>
+</div>
+
+{# Icons used by contacts.js when it builds rows, cards and the drawer. #}
+<div hidden data-icons>
+  <template data-icon="mail">{% icon "mail" %}</template>
+  <template data-icon="phone">{% icon "phone" %}</template>
+  <template data-icon="more">{% icon "more" %}</template>
+  <template data-icon="clock">{% icon "clock" %}</template>
+  <template data-icon="map-pin">{% icon "map-pin" %}</template>
+  <template data-icon="briefcase">{% icon "briefcase" %}</template>
+  <template data-icon="star">{% icon "star" %}</template>
+  <template data-icon="calendar">{% icon "calendar" %}</template>
+  <template data-icon="dollar">{% icon "dollar" %}</template>
+  <template data-icon="edit">{% icon "edit" %}</template>
+  <template data-icon="user-plus">{% icon "user-plus" %}</template>
+  <template data-icon="message">{% icon "message" %}</template>
+  <template data-icon="trending-up">{% icon "trending-up" %}</template>
+  <template data-icon="trending-down">{% icon "trending-down" %}</template>
+  <template data-icon="send">{% icon "send" %}</template>
+  <template data-icon="file">{% icon "file" %}</template>
+  <template data-icon="tag">{% icon "tag" %}</template>
+  <template data-icon="activity">{% icon "activity" %}</template>
+</div>
+
+{{ contacts_data|json_script:"contacts-data" }}
+{{ team_data|json_script:"team-data" }}
+{{ open_contact|json_script:"open-contact" }}
+{% endblock %}
+
+{% block modals %}
+{# ---- Contact detail: full-screen dialog (content is built by contacts.js) #}
+<dialog class="modal ct-detail" id="contact-drawer" aria-labelledby="ct-dw-name">
+  <div class="modal-panel" tabindex="-1" autofocus>
+    <div class="ct-dt-bar">
+      <button class="btn btn--ghost btn--sm ct-dt-back" type="button" data-close-modal>{% icon "chevron-left" %}<span>Contacts</span></button>
+      <div class="row ct-dt-nav" style="--gap: 2px">
+        <button class="icon-btn icon-btn--sm" type="button" data-drawer-step="-1" aria-label="Previous contact" data-tooltip="Previous  K" data-tooltip-pos="bottom">{% icon "chevron-up" %}</button>
+        <button class="icon-btn icon-btn--sm" type="button" data-drawer-step="1" aria-label="Next contact" data-tooltip="Next  J" data-tooltip-pos="bottom">{% icon "chevron-down" %}</button>
+        <span class="text-xs text-subtle num ct-dw-pos" data-drawer-pos></span>
+      </div>
+      <div class="row ct-dt-actions" style="--gap: 8px">
+        <button class="btn btn--ghost btn--sm" type="button" data-drawer-action="delete" aria-label="Delete contact"><span>Delete</span></button>
+        <button class="btn btn--sm" type="button" data-drawer-action="call"><span>Call</span></button>
+        <button class="btn btn--primary btn--sm" type="button" data-drawer-action="email"><span>Send email</span></button>
+      </div>
+    </div>
+    <div class="modal-body ct-dt-body" data-drawer-body></div>
+  </div>
+</dialog>
+
+{# ---- Add contact modal -------------------------------------------------- #}
+<dialog class="modal" id="add-contact-modal" aria-labelledby="add-contact-title">
+  <form class="modal-panel" method="dialog" data-add-form novalidate>
+    <div class="modal-header">
+      <div>
+        <h2 id="add-contact-title">Add contact</h2>
+        <p>The contact is added to the top of the list.</p>
+      </div>
+      <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field span-2">
+          <label class="label" for="ac-name">Full name</label>
+          <input class="input" id="ac-name" name="name" placeholder="e.g. Wren Calloway" autocomplete="off" autofocus>
+          <span class="ct-error" data-error-for="name">Please enter a name.</span>
+        </div>
+        <div class="field span-2">
+          <label class="label" for="ac-email">Email</label>
+          <input class="input" id="ac-email" name="email" type="email" placeholder="name@company.example" autocomplete="off">
+          <span class="ct-error" data-error-for="email">Enter a valid email address.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="ac-company">Company</label>
+          <input class="input" id="ac-company" name="company" placeholder="Company" autocomplete="off">
+        </div>
+        <div class="field">
+          <label class="label" for="ac-role">Role</label>
+          <input class="input" id="ac-role" name="role" placeholder="e.g. Head of Design" autocomplete="off">
+        </div>
+        <div class="field span-2">
+          <span class="label">Status</span>
+          <div class="ct-seg" role="radiogroup" aria-label="Status">
+            <label><input type="radio" name="status" value="lead" checked><span><i class="ct-dot ct-dot--lead"></i>Lead</span></label>
+            <label><input type="radio" name="status" value="active"><span><i class="ct-dot ct-dot--active"></i>Active</span></label>
+            <label><input type="radio" name="status" value="vip"><span><i class="ct-dot ct-dot--vip"></i>VIP</span></label>
+            <label><input type="radio" name="status" value="inactive"><span><i class="ct-dot ct-dot--inactive"></i>Inactive</span></label>
+          </div>
+        </div>
+        <div class="field span-2">
+          <label class="label" for="ac-tags">Tags</label>
+          <input class="input" id="ac-tags" name="tags" placeholder="saas, priority" autocomplete="off">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--ghost" type="button" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" type="submit"><span>Add contact</span></button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/contacts.js' %}" defer></script>
+{% endblock %}

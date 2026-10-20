@@ -1,0 +1,338 @@
+/* ==========================================================================
+   MESSAGES PAGE  (templates/dashboard/messages.html + js/pages/messages.js)
+   Three panes: folders | message list | reading pane.
+   Inbox >= 1100px wide: three columns.  Narrower: one pane at a time
+   (list -> full-width email with a back arrow).
+   ========================================================================== */
+.inbox {
+  position: relative;
+  display: grid;
+  grid-template-columns: 200px minmax(300px, 380px) minmax(420px, 1fr);
+  grid-template-areas: "folders list read";
+  height: max(560px, calc(100dvh - 120px));
+  overflow: hidden;
+}
+
+/* ---- Folders ---------------------------------------------------------------- */
+.inbox-folders {
+  grid-area: folders;
+  display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-4);
+  padding: var(--space-4) 12px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  min-height: 0; overflow-y: auto;
+}
+.inbox-nav { position: relative; display: flex; flex-direction: column; }
+.inbox-nav__title {
+  padding: 12px 10px 6px; font-size: var(--text-base); font-weight: 400;
+  color: var(--text-subtle);
+}
+.inbox-nav__title:first-of-type { padding-top: 2px; }
+.inbox-nav__item {
+  position: relative; z-index: 1;
+  display: flex; align-items: center; gap: 10px;
+  height: 36px; padding: 0 10px; margin: 1px 0;
+  border-radius: var(--radius-md);
+  font-size: var(--text-base); font-weight: 400; color: var(--text-muted); text-align: left; white-space: nowrap;
+  transition: color var(--dur-fast), background-color var(--dur-fast);
+}
+.inbox-nav__item:hover { color: var(--text); background: var(--surface-3); }
+.inbox-nav__item.is-active { color: var(--primary); background: transparent; }
+.inbox-nav__label { flex: 1; }
+.inbox .avatar { --c: var(--text-muted); }
+
+/* Sliding active pill (same idea as the sidebar nav pill; JS sets --x/--y/--w/--h). */
+.inbox-nav__indicator {
+  position: absolute; left: 0; top: 0; z-index: 0;
+  width: var(--w, 0px); height: var(--h, 36px);
+  border-radius: var(--radius-md);
+  background: var(--primary-soft);
+  transform: translate(var(--x, 0px), var(--y, 0px));
+  transition: transform var(--dur-base) var(--ease-out-quart), width var(--dur-base) var(--ease-out-quart), height var(--dur-base) var(--ease-out-quart);
+}
+.inbox-nav__indicator.no-anim { transition: none; }
+
+.inbox-count {
+  min-width: 18px; text-align: right;
+  font-size: var(--text-base); font-weight: 400; color: var(--text-muted); font-variant-numeric: tabular-nums;
+  transition: opacity var(--dur-fast);
+}
+.inbox-count--muted { color: var(--text-subtle); font-weight: 400; }
+.inbox-count.is-zero { opacity: 0; }
+.inbox-nav__item.is-active .inbox-count:not(.inbox-count--muted) { color: var(--primary); }
+.inbox-storage { padding: 0 10px 4px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ---- List -------------------------------------------------------------------- */
+.inbox-list { grid-area: list; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
+.inbox-list__head { padding: var(--space-4) var(--space-4) 0; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border); }
+.inbox-search { position: relative; }
+.inbox-search .icon { position: absolute; left: 11px; top: 50%; translate: 0 -50%; color: var(--text-subtle); pointer-events: none; transition: color var(--dur-fast); }
+.inbox-search:focus-within .icon { color: var(--primary); }
+.inbox-search .input { height: 36px; padding-left: 33px; background: var(--surface-2); border-color: var(--border); }
+.inbox-tabs { border-bottom: 0; margin: 0 -4px; }
+.inbox-tabs .tab { padding: 8px 10px 11px; }
+.inbox-tab-count { margin-left: 4px; font-weight: 400; color: var(--text-subtle); }
+
+.inbox-items { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 6px; overscroll-behavior: contain; }
+.inbox-empty { flex: 1; }
+.inbox-empty[hidden], .inbox-items[hidden] { display: none; }
+.inbox-empty .empty-state { padding: var(--space-8) var(--space-4); }
+
+/* Each message sits in a wrapper so swipe gestures can reveal a colored action behind it. */
+.msg-wrap { position: relative; border-radius: var(--radius-md); }
+.msg-wrap + .msg-wrap { margin-top: 2px; }
+.msg-swipe {
+  position: absolute; inset: 1px; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+  color: var(--primary-contrast); font-size: var(--text-base); font-weight: 400;
+  background: var(--swipe-c, var(--primary));
+  opacity: 0; transition: opacity var(--dur-fast), background-color var(--dur-fast);
+}
+.msg-swipe span { display: inline-flex; align-items: center; gap: 6px; opacity: 0.7; transition: opacity var(--dur-fast); }
+.msg-swipe .is-armed { opacity: 1; }
+.msg-wrap.is-swiping .msg-swipe { opacity: 1; }
+
+.msg {
+  position: relative;
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px;
+  padding: 14px 14px 14px 20px;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  touch-action: pan-y;
+  transition: background-color var(--dur-fast);
+}
+.msg:hover { background: var(--surface-2); }
+.msg.is-selected { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.msg::before {                          /* selected accent bar */
+  content: ""; position: absolute; left: 3px; top: 12px; bottom: 12px; width: 3px; border-radius: 3px;
+  background: var(--primary);
+  transform: scaleY(0); transition: transform var(--dur-base) var(--ease-out-expo);
+}
+.msg.is-selected::before { transform: scaleY(1); }
+.msg:focus-visible { box-shadow: var(--ring); border-radius: var(--radius-md); }
+.msg-wrap.is-dragging .msg { transition: none; box-shadow: var(--shadow-md); }
+
+.msg__dot {
+  position: absolute; left: 8px; top: 23px; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--primary);
+  transition: transform var(--dur-base) var(--ease-out-quart), opacity var(--dur-base) var(--ease-out-quart);
+}
+.msg:not(.is-unread) .msg__dot { transform: scale(0); opacity: 0; }
+.msg__top { display: flex; align-items: baseline; gap: 12px; }
+/* One weight in every row: unread = darker text + dot, not bold. */
+.msg__sender, .msg__subject { font-weight: 400; transition: color var(--dur-base); }
+.msg__sender { flex: 1; min-width: 0; font-size: var(--text-base); color: var(--text-muted); }
+.msg__subject { font-size: var(--text-base); color: var(--text-muted); margin-top: 4px; }
+.msg.is-unread .msg__sender { color: var(--text); }
+.msg.is-unread .msg__subject { color: var(--text); }
+.msg__time { font-size: var(--text-base); color: var(--text-subtle); white-space: nowrap; transition: opacity var(--dur-fast); }
+.msg.is-unread .msg__time { color: var(--primary); }
+.msg__bottom { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+.msg__preview { flex: 1; min-width: 0; font-size: var(--text-base); color: var(--text-subtle); }
+.msg__label {
+  flex: none; display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border-radius: var(--radius-full);
+  font-size: var(--text-base); font-weight: 400; color: var(--text-subtle); padding: 0; height: auto;
+}
+/* Hover actions slide in from the right over the time. */
+.msg__actions {
+  position: absolute; right: 8px; top: 8px;
+  display: flex; gap: 2px; padding: 2px; border-radius: var(--radius-sm);
+  background: var(--surface); box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+  opacity: 0; transform: translateX(6px); pointer-events: none;
+  transition: opacity var(--dur-fast), transform var(--dur-base) var(--ease-out-expo);
+}
+.msg__actions .icon-btn { width: 26px; height: 26px; }
+.msg__actions .icon-btn .icon { width: 14px; height: 14px; }
+.msg:hover .msg__actions, .msg:focus-within .msg__actions { opacity: 1; transform: none; pointer-events: auto; }
+@media (hover: none) { .msg__actions { display: none; } }
+
+/* ---- Star toggle ---------------------------------------------------------- */
+.msg-star { position: relative; color: var(--text-subtle); }
+.msg-star .icon { transition: fill var(--dur-fast), color var(--dur-fast); }
+.msg-star.is-on { color: var(--primary); }
+.msg-star.is-on .icon { fill: currentColor; }
+.msg-star.is-on:hover { color: var(--primary-hover); }
+.msg .msg-star { width: 24px; height: 24px; margin: -4px -4px -4px 0; border-radius: var(--radius-sm); }
+.msg .msg-star .icon { width: 15px; height: 15px; }
+
+/* ---- Reading pane ------------------------------------------------------------- */
+.inbox-read { grid-area: read; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); }
+.read-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  height: 52px; padding: 0 var(--space-4); border-bottom: 1px solid var(--border); flex: none;
+}
+.read-back { display: none; }
+.read-expand .ico-min, .inbox.is-expanded .read-expand .ico-max { display: none; }
+.inbox.is-expanded .read-expand .ico-min { display: inline; }
+/* Full-screen reading: the inbox card covers the viewport and only the reading pane shows. */
+.inbox.is-expanded {
+  position: fixed; inset: 0 0 0 var(--sidebar-w); z-index: 30; height: 100dvh;
+  border: 0; border-radius: 0; box-shadow: none;
+  grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "read";
+}
+.inbox.is-expanded .inbox-folders, .inbox.is-expanded .inbox-list { display: none; }
+.inbox.is-expanded .inbox-read { position: static; transform: none; visibility: visible; box-shadow: none; }
+.inbox.is-expanded .read-content { margin-inline: auto; max-width: 780px; }
+.inbox.is-expanded .read-back { display: none; }
+[data-sidebar="collapsed"] .inbox.is-expanded { left: var(--sidebar-w-collapsed); }
+@media (max-width: 900px) { .inbox.is-expanded, [data-sidebar="collapsed"] .inbox.is-expanded { left: 0; z-index: 35; } }
+.read-nav { margin-left: auto; }
+.read-nav [data-position] { margin-right: 6px; }
+.inbox-read.is-empty .read-toolbar > .row { opacity: 0.4; pointer-events: none; }
+.read-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.read-content { padding: var(--space-6) var(--space-8) var(--space-8); max-width: 760px; }
+.read-content > .plain-empty { padding-top: 18vh; }
+.read-subject { font-size: var(--text-base); font-weight: 500; line-height: 1.5; }
+.read-body { margin-top: var(--space-6); font-size: var(--text-base); line-height: 1.7; color: var(--text); }
+.read-body p + p { margin-top: 0.9em; }
+.read-attach {
+  display: inline-flex; align-items: center; gap: 12px; margin-top: var(--space-6);
+  padding: 10px 12px 10px 10px; border: 1px solid var(--border); border-radius: var(--radius-md);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-base) var(--ease-out-expo), transform var(--dur-base) var(--ease-out-expo);
+}
+.read-attach:hover { border-color: var(--border-strong); }
+
+.read-reply {
+  margin-top: var(--space-8); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background-color var(--dur-fast);
+}
+.read-reply:focus-within { border-color: var(--primary); box-shadow: var(--ring); background: var(--surface); }
+.read-reply textarea {
+  display: block; width: 100%; min-height: 54px; max-height: 240px; padding: 12px 14px 4px; border: 0; resize: none;
+  background: transparent; font-size: var(--text-base); outline: none;
+  transition: min-height var(--dur-base) var(--ease-out-expo);
+}
+.read-reply:focus-within textarea { min-height: 110px; }
+.read-reply__foot { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 8px 14px; }
+.read-reply__foot > span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* ---- Responsive (container queries on .inbox-shell, so the sidebar width counts) ----
+   >= 1100px of inbox width: folders | list | reading pane.
+   <  1100px: one pane at a time. The list (with a folder dropdown) fills the card;
+   opening a message slides the list out and the email in, full width, with a back arrow. */
+.inbox-shell { container-type: inline-size; container-name: inbox; }
+.inbox-list__bar { display: flex; gap: var(--space-2); }
+.inbox-list__bar .inbox-search { flex: 1; min-width: 0; }
+.inbox-folder-select { display: none; width: auto; height: 36px; flex: none; max-width: 46%; }
+
+@container inbox (max-width: 1099px) {
+  .inbox { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "list"; }
+  .inbox-folders { display: none; }
+  .inbox-folder-select { display: block; }
+  .inbox-list { grid-area: list; border-right: 0; }
+  .inbox-read {
+    grid-area: list;
+    transform: translateX(6%); opacity: 0; visibility: hidden; pointer-events: none;
+  }
+  .inbox.is-reading .inbox-read { transform: none; opacity: 1; visibility: visible; pointer-events: auto; }
+  .inbox.is-reading .inbox-list { transform: translateX(-6%); opacity: 0; visibility: hidden; pointer-events: none; }
+  /* Transitions only while JS marks a user-initiated switch (.pane-anim); a resize
+     across the breakpoint snaps. Enter: 250ms ease-out; exit: 150ms ease-in. */
+  .inbox.pane-anim .inbox-read, .inbox.pane-anim.is-reading .inbox-list {
+    transition: transform var(--dur-fast) var(--ease-in), opacity var(--dur-fast) var(--ease-in), visibility 0s linear var(--dur-fast);
+  }
+  .inbox.pane-anim .inbox-list, .inbox.pane-anim.is-reading .inbox-read {
+    transition: transform var(--dur-base) var(--ease-out-quart), opacity var(--dur-base) var(--ease-out-quart), visibility 0s;
+  }
+  .read-back { display: grid; }
+  .read-content { margin-inline: auto; }
+}
+@container inbox (max-width: 600px) {
+  .read-nav [data-position] { display: none; }
+  .read-content { padding: var(--space-5) var(--space-4) var(--space-6); }
+  .read-when { display: none; }       /* the date moves under the sender (see .read-to) */
+  .read-to .read-to-date { display: inline; }
+  .read-toolbar { padding: 0 var(--space-2); }
+}
+.read-to-date { display: none; }
+/* Toolbar buttons: text labels on wide screens; icon-only (with aria-label) when narrow. */
+.page-toolbar .btn .icon { display: none; }
+@media (max-width: 759px) {
+  .inbox { height: calc(100dvh - 150px); min-height: 480px; }
+  .page-toolbar .btn .icon { display: inline-block; }
+  .page-toolbar .btn span { display: none; }
+  .page-toolbar .btn { width: 38px; padding: 0; }
+}
+
+/* Full-screen reading wins over the one-pane rules above. */
+.inbox.inbox.is-expanded .inbox-read { grid-area: read; transform: none; opacity: 1; visibility: visible; pointer-events: auto; }
+
+/* Reading header: "Name <email>" on one line (email truncates), date right-aligned. */
+.read-head { display: flex; align-items: flex-start; gap: var(--space-3); margin-top: var(--space-5); }
+.read-meta { flex: 1; min-width: 0; }
+.read-line { display: flex; align-items: baseline; gap: var(--space-3); min-width: 0; }
+.read-from { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; white-space: nowrap; }
+.read-from strong { font-weight: 400; color: var(--text); flex: none; }
+.read-email { color: var(--text-subtle); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.read-when { flex: none; color: var(--text-subtle); white-space: nowrap; }
+.read-to { margin-top: 4px; color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.read-attach__dl { color: var(--primary); }
+.read-toolbar { min-width: 0; }
+.read-toolbar > * { flex: none; }
+
+/* ---- One type size ----------------------------------------------------------
+   Everything on this page is 14px (var(--text-base)); hierarchy comes from
+   weight and grey tone. Only key numbers use the one larger size (22px).   */
+body.page-messages :is(.page, dialog) :is(.card-title, .card-subtitle, .list-item__title, .list-item__meta, .chip, .chip .count,
+  .tab, .btn, .badge, .label, .hint, .input, .select, .textarea, .table, .table th, .table td, .text-sm, .text-xs, .kbd,
+  .modal-header h2, .modal-header p, .empty-state h3, .empty-state p) { font-size: var(--text-base); }
+body.page-messages :is(.page, dialog) .table th { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-subtle); }
+body.page-messages :is(.page, dialog) .card-title, body.page-messages :is(.page, dialog) .modal-header h2 { font-weight: 500; letter-spacing: 0; }
+/* Flat progress fill (no gradient). */
+body.page-messages :is(.page, dialog) .progress-bar { background: var(--c, var(--primary)); }
+.num-lg { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
+.plain-empty { padding: var(--space-10) var(--space-6); text-align: center; color: var(--text-subtle); }
+.plain-empty strong { display: block; margin-bottom: 4px; color: var(--text); font-weight: 500; }
+
+/* ---- Calm type: one weight per row, 500 only for the open subject ------------ */
+body.page-messages :is(.page, dialog) :is(.tab, .label) { font-weight: 400; }
+body.page-messages .inbox-tabs .tab.is-active { color: var(--text); }
+body.page-messages :is(.page, dialog) .field { gap: 8px; }
+.read-attach .list-item__title { font-weight: 400; }
+.read-attach > span:first-child > .text-subtle { display: block; margin-top: 2px; }
+[data-refresh][aria-busy="true"] { opacity: 0.5; pointer-events: none; transition: opacity var(--dur-fast); }
+
+/* ---- Custom select ("xs"): trigger + listbox on the shared dropdown ----------
+   Same component in messages.css and settings.css (candidate for components.css).
+   Opens with a fade + 4px slide / .98 scale in ~160ms ease-out, closes in ~120ms;
+   options do not cascade. */
+.xs { display: block; min-width: 0; }
+.xs-trigger {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 36px; padding: 0 10px 0 12px;
+  border: 1px solid var(--border-strong); border-radius: var(--radius-sm); background: var(--surface);
+  font-size: var(--text-base); font-weight: 400; color: var(--text); text-align: left;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.xs-trigger:hover { border-color: var(--text-subtle); }
+.xs-trigger:focus-visible, .xs.is-open > .xs-trigger { outline: none; border-color: var(--primary); box-shadow: var(--ring); }
+.xs-value { flex: 1; min-width: 0; }
+.xs-chev { width: 16px; height: 16px; flex: none; color: var(--text-subtle); }
+.xs > select[hidden] { display: none !important; }
+.xs > .xs-menu {
+  left: 0; right: auto; top: calc(100% + 6px); min-width: 100%; width: max-content; max-width: min(320px, 90vw);
+  max-height: 320px; overflow-y: auto; padding: 4px;
+  transform-origin: top left; transform: translateY(-4px) scale(0.98);
+  transition: opacity max(1ms, calc(var(--dur-fast) - 30ms)) var(--ease-in),
+              transform max(1ms, calc(var(--dur-fast) - 30ms)) var(--ease-in),
+              visibility 0s linear max(1ms, calc(var(--dur-fast) - 30ms));
+}
+.xs.is-open > .xs-menu {
+  transform: none;
+  transition: opacity calc(var(--dur-fast) + 10ms) var(--ease-out-quart),
+              transform calc(var(--dur-fast) + 10ms) var(--ease-out-quart), visibility 0s;
+}
+.xs.is-open > .xs-menu .dropdown-item { animation: none; }
+.xs-opt { gap: 12px; padding: 8px 10px; color: var(--text); }
+.xs-opt__label { flex: 1; min-width: 0; }
+.xs-count { color: var(--text-subtle); font-variant-numeric: tabular-nums; text-align: right; min-width: 2ch; }
+.xs-opt .xs-check { width: 15px; height: 15px; flex: none; color: var(--primary); opacity: 0; }
+.xs-opt.is-current { color: var(--primary); }
+.xs-opt.is-current .xs-check { opacity: 1; }
+.xs-opt:focus-visible { outline: none; background: var(--surface-2); }
+/* Folder picker (narrow inbox only). */
+.xs.inbox-folder-picker { display: none; flex: none; width: auto; max-width: 46%; }
+@container inbox (max-width: 1099px) { .xs.inbox-folder-picker { display: block; } }
+/* Resizing (shell sets html.is-resizing): nothing on this page animates. */
+html.is-resizing .inbox *, html.is-resizing .inbox { transition: none !important; }

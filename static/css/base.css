@@ -1,0 +1,211 @@
+/* ==========================================================================
+   BASE: font, reset, app shell layout, typography, layout utilities.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Inter";
+  src: url("../fonts/InterVariable.woff2") format("woff2");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+* { margin: 0; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  min-height: 100vh;
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--bg);
+  font-feature-settings: "cv11", "ss01", "ss03";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+img, svg, canvas { display: block; max-width: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; background: none; border: 0; padding: 0; }
+a { color: inherit; text-decoration: none; }
+/* Lists with a class are layout, not prose: no bullets, no indent. */
+ul[class], ol[class] { list-style: none; padding: 0; }
+h1, h2, h3, h4 { line-height: 1.3; font-weight: 500; letter-spacing: -0.015em; }
+::selection { background: var(--primary-soft); color: var(--text); }
+
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: var(--radius-sm); }
+
+/* Tabular numbers keep counting numbers from jittering sideways. */
+.num, [data-countup] { font-variant-numeric: tabular-nums; }
+
+/* Thin themed scrollbars */
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+.skip-link {
+  position: fixed; left: var(--space-4); top: -60px; z-index: 200;
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-md);
+  background: var(--primary); color: var(--primary-contrast);
+  transition: top var(--dur-fast) var(--ease-out-expo);
+}
+.skip-link:focus { top: var(--space-4); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+   APP SHELL
+   .app
+     .sidebar        (fixed, left)
+     .app-main       (margin-left follows sidebar width)
+       .mobile-bar   (<= 900px only: menu button + logo; there is NO top bar)
+       main.page     (page content, capped at --page-max and centred)
+   Sidebar states (html[data-sidebar]): expanded (resizable 200-360px),
+   collapsed (68px icon rail; automatic between 901 and 1100px viewport),
+   and an off-canvas drawer at <= 900px.
+   ========================================================================== */
+.app-main {
+  min-height: 100vh;
+  margin-left: var(--sidebar-w);
+  transition: margin-left var(--dur-slow) var(--ease-out-expo);
+  display: flex;
+  flex-direction: column;
+}
+[data-sidebar="collapsed"] .app-main { margin-left: var(--sidebar-w-collapsed); }
+
+.page {
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-8) var(--space-12);
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .app-main, [data-sidebar="collapsed"] .app-main { margin-left: 0; }
+  .page { padding: var(--space-5) var(--space-4) var(--space-10); }
+}
+
+/* ==========================================================================
+   LAYOUT UTILITIES
+   ========================================================================== */
+
+/* 12-column grid. Children use .col-3/.col-4/.col-5/.col-6/.col-7/.col-8/.col-12 */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+/* Vertical rhythm between stacked layout blocks. */
+:where(.grid, .grid-auto, .section) + :where(.grid, .grid-auto, .section) { margin-top: var(--space-4); }
+.col-3 { grid-column: span 3; }  .col-4 { grid-column: span 4; }
+.col-5 { grid-column: span 5; }  .col-6 { grid-column: span 6; }
+.col-7 { grid-column: span 7; }  .col-8 { grid-column: span 8; }
+.col-12 { grid-column: span 12; }
+/* The columns reflow on the CONTENT width (viewport minus the sidebar,
+   whatever its state or dragged width), not the viewport.
+   html[data-content] = lg (>= 900px of content) | md (560-899) | sm (< 560),
+   set before paint by base.html and kept live by app.js (ResizeObserver on
+   main.page). Use the same attribute in page CSS:
+     html[data-content="md"] .my-thing { ... }                              */
+html[data-content="md"] .col-3, html[data-content="sm"] .col-3 { grid-column: span 6; }
+html[data-content="md"] :is(.col-4, .col-5, .col-7, .col-8),
+html[data-content="sm"] :is(.col-4, .col-5, .col-7, .col-8) { grid-column: span 12; }
+html[data-content="sm"] :is(.col-3, .col-6) { grid-column: span 12; }
+
+/* Auto-fitting card grid (KPI rows, card galleries). */
+.grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--min, 230px)), 1fr));
+  gap: var(--space-4);
+}
+
+.stack   { display: flex; flex-direction: column; gap: var(--gap, var(--space-3)); }
+.row     { display: flex; align-items: center; gap: var(--gap, var(--space-3)); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.wrap    { flex-wrap: wrap; }
+.grow    { flex: 1; min-width: 0; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.text-muted  { color: var(--text-muted); }
+.text-subtle { color: var(--text-subtle); }
+.text-sm { font-size: var(--text-base); }
+.text-xs { font-size: var(--text-xs); }
+.text-success { color: var(--success); }
+.text-danger  { color: var(--danger); }
+.fw-600, .fw-500 { font-weight: 500; }   /* legacy name: medium is the heaviest weight in the UI */
+.mt-1 { margin-top: var(--space-1); } .mt-2 { margin-top: var(--space-2); }
+.mt-4 { margin-top: var(--space-4); } .mt-6 { margin-top: var(--space-6); }
+
+/* ==========================================================================
+   DATA ROWS  -  "label left, values right in their own columns"
+   --------------------------------------------------------------------------
+   The fix for glued text like "47,729 visits40.4%". Every value gets its own
+   right-aligned, tabular column with a real gap; an optional bar spans the
+   whole row 8px below the text.
+
+   <div class="data-list" style="--cols: 2">           columns line up across rows (subgrid)
+     <div class="data-row">
+       <span class="data-row__label">Organic search</span>
+       <span>47,729 visits</span>
+       <span class="data-row__muted">40.4%</span>
+       <div class="progress progress--sm" data-progress="40.4"><div class="progress-bar"></div></div>
+     </div>
+   </div>
+
+   A lone .data-row works too (columns then size per row). --cols = number
+   of value columns (default 1). Rows are 12px apart (16px with .data-list--airy).
+   ========================================================================== */
+.data-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(var(--cols, 1), auto);
+  column-gap: var(--space-6);
+  row-gap: var(--space-3);
+}
+.data-list--airy { row-gap: var(--space-4); }
+.data-list--divided { row-gap: 0; }
+.data-list--divided > .data-row { padding-block: var(--space-3); }
+.data-list--divided > .data-row + .data-row { border-top: 1px solid var(--border); }
+.data-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(var(--cols, 1), auto);
+  column-gap: var(--space-6);
+  align-items: baseline;
+  min-width: 0;
+}
+.data-list > .data-row { grid-column: 1 / -1; grid-template-columns: subgrid; }
+.data-row > * { min-width: 0; }
+.data-row > :not(:first-child):not(.progress) { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.data-row__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.data-row__muted { color: var(--text-subtle); }
+.data-row > .progress { grid-column: 1 / -1; margin-top: var(--space-2); }
+
+/* Simple two-part row: label left, one value right (settings, details). */
+.kv-row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-6); min-width: 0; }
+.kv-row > :first-child { color: var(--text-muted); min-width: 0; }
+.kv-row > :last-child { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ==========================================================================
+   RESPONSIVE HELPERS
+   --------------------------------------------------------------------------
+   Viewport breakpoints used by the shell: 900 (drawer), 1100 (auto rail),
+   1200 (.col-* stack). The content width ALSO depends on the sidebar
+   (expanded / rail / dragged to 360px), so for widgets that must react to
+   their real width use a container:
+
+     <section class="card cq"> ... </section>
+     @container (max-width: 520px) { .my-widget { grid-template-columns: 1fr; } }
+
+   .cq makes the element an inline-size query container (named "cq").
+   Caveat: a container is the containing block for position:fixed children,
+   so never put .cq around fixed overlays (save bars, menus, morph layers).
+
+   For the shared .grid you don't need a container: it already follows
+   the content width via html[data-content] (see LAYOUT UTILITIES).
+   ========================================================================== */
+.cq { container: cq / inline-size; }
+/* Hide / show by viewport. */
+@media (max-width: 900px)  { .hide-sm { display: none !important; } }
+@media (min-width: 901px)  { .show-sm { display: none !important; } }
+@media (max-width: 1100px) { .hide-md { display: none !important; } }

@@ -1,0 +1,253 @@
+/* ==========================================================================
+   CONTROL PANEL DESIGN TOKENS (internal codename Nimbus)
+   --------------------------------------------------------------------------
+   Every color, radius, shadow, spacing and MOTION value lives here as a CSS
+   custom property. Components never hard-code these values.
+
+   Theme: light is the default (`:root`). Dark overrides live under
+   `[data-theme="dark"]` on <html>, set before first paint by the inline
+   script in templates/base.html.
+   ========================================================================== */
+
+/* ---- Brand palette --------------------------------------------------
+   mint #76CCB1 -> teal #3C828D -> navy #0D4671, ink #1F1F1F.
+   Accent = teal. Navy = hover / pressed / emphasis. Mint = secondary
+   highlight (charts, dark-mode accent). Everything else is neutral grey.  */
+:root {
+  --brand-mint:  #76ccb1;
+  --brand-teal:  #3c828d;
+  --brand-navy:  #0d4671;
+  --brand-ink:   #1f1f1f;
+  /* Sidebar logo slot text colour (.brand) */
+  --logo-ink:       #1f1f1f;
+
+  /* ---- Surfaces & text ------------------------------------------------ */
+  --bg:             #f6f7f8;   /* page background behind cards           */
+  --surface:        #ffffff;   /* cards, sidebar, dropdowns              */
+  --surface-2:      #f8f9fa;   /* hovered rows, inputs                   */
+  --surface-3:      #eff1f3;   /* pressed / track backgrounds            */
+  --surface-glass:  rgb(255 255 255 / 0.92);
+  --border:         #e5e8eb;
+  --border-strong:  #d4d9de;
+  --text:           #1b1f23;
+  --text-muted:     #59636d;
+  --text-subtle:    #8a939c;
+
+  /* ---- Brand & semantic --------------------------------------------- */
+  --primary:          #3c828d;               /* teal                       */
+  --primary-hover:    #24647f;               /* teal -> navy               */
+  --primary-soft:     rgb(60 130 141 / 0.09); /* active nav, selection     */
+  --primary-contrast: #ffffff;
+  /* Status colours come from the logo too (no green/amber/blue hues):
+     success = teal, warning = navy, info = slate grey. Danger is the ONE
+     non-brand hue, a muted red reserved for destructive actions/errors. */
+  --success:  #3c828d;  --success-soft: rgb(60 130 141 / 0.09);
+  --warning:  #0d4671;  --warning-soft: rgb(13 70 113 / 0.08);
+  --danger:   #a5524d;  --danger-soft:  rgb(165 82 77 / 0.08);
+  --info:     #5d6973;  --info-soft:    rgb(93 105 115 / 0.09);
+
+  /* ---- Chart palette: brand + neutrals, in order of use -------------- */
+  --chart-1: #3c828d;   /* teal  - main series        */
+  --chart-2: #0d4671;   /* navy  - second series      */
+  --chart-3: #76ccb1;   /* mint  - third series       */
+  --chart-4: #8d9aa5;   /* grey  - fourth             */
+  --chart-5: #c9d0d6;   /* light grey - remainder     */
+  --chart-bar:   #8ab4bb;  /* lighter teal for bar fills (hover = --chart-1) */
+  --chart-bar-2: #7d9cb5;  /* lighter navy for a second bar series          */
+
+  /* ---- Accent palette (keys match dashboard.models.COLOR_CHOICES) ----
+     Names are kept for compatibility (they are stored in the DB), but every
+     value is now a logo colour or a neutral grey. Usage:
+       style="--c: var(--accent-{{ obj.color }})"                        */
+  --accent-indigo:  #0d4671;   /* navy             */
+  --accent-violet:  #2b5f80;   /* navy, lighter    */
+  --accent-pink:    #5a9a9f;   /* teal, lighter    */
+  --accent-rose:    #1f1f1f;   /* ink              */
+  --accent-orange:  #6b7680;   /* grey             */
+  --accent-amber:   #9aa3ab;   /* light grey       */
+  --accent-emerald: #4fa88f;   /* mint, deepened   */
+  --accent-teal:    #3c828d;   /* teal             */
+  --accent-sky:     #24647f;   /* teal-navy        */
+  --accent-slate:   #6b7680;   /* grey             */
+
+  /* ---- Radii ---------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-full: 999px;
+
+  /* ---- Shadows (flat UI: borders do the work, shadows only for floating
+     layers like menus, modals, toasts) ------------------------------------ */
+  --shadow-xs: 0 1px 1px rgb(16 24 32 / 0.03);
+  --shadow-sm: 0 1px 2px rgb(16 24 32 / 0.04);
+  --shadow-md: 0 4px 12px -2px rgb(16 24 32 / 0.08), 0 1px 3px rgb(16 24 32 / 0.04);
+  --shadow-lg: 0 12px 32px -8px rgb(16 24 32 / 0.14), 0 2px 6px rgb(16 24 32 / 0.05);
+  --shadow-xl: 0 24px 56px -12px rgb(16 24 32 / 0.22);
+  --ring:      0 0 0 3px rgb(60 130 141 / 0.22);   /* focus ring */
+
+  /* ---- Spacing scale (4px base) ---------------------------------------- */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-5: 20px;  --space-6: 24px;  --space-8: 32px;  --space-10: 40px;
+  --space-12: 48px; --space-16: 64px;
+
+  /* ---- Typography ------------------------------------------------------ */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, monospace;
+  /* Deliberately few sizes: 14px is THE size. 12px only for axis/meta,
+     24px only for key numbers. md/lg/xl collapse onto 14-16 on purpose. */
+  --text-xs: 12px; --text-sm: 14px; --text-base: 14px; --text-md: 14px;
+  --text-lg: 16px; --text-xl: 16px; --text-2xl: 24px; --text-3xl: 24px;
+
+  /* ---- Layout ----------------------------------------------------------- */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 68px;
+  --header-h: 64px;     /* sidebar brand row height                           */
+  --topbar-h: 64px;     /* legacy: there is no top bar any more; kept so page
+                           CSS that sizes bars/heights with it keeps working  */
+  --page-max: 1600px;   /* content cap on wide screens (centred) */
+
+  /* ======================================================================
+     MOTION TOKENS  -  crisp, never cute
+     ----------------------------------------------------------------------
+       * micro-interactions (hover, press, toggles) .... --dur-fast
+       * most enters/exits (dropdowns, cards, pages) ... --dur-base
+       * larger travel (drawers, modals, nav pill) ..... --dur-slow
+       * "data" motion (count-up, progress, charts) .... --dur-data
+     Exits are FASTER than enters. No overshoot, no loops, small distances.
+     ====================================================================== */
+  --dur-instant: 80ms;
+  --dur-fast:    150ms;
+  --dur-base:    220ms;
+  --dur-slow:    300ms;
+  --dur-data:    600ms;   /* count-ups, progress bars, chart draw-in */
+  --stagger:     35ms;
+
+  /* Easing curves (all end without overshoot) */
+  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);     /* default for enters: fast start, soft landing */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);     /* slightly gentler enter */
+  --ease-in:        cubic-bezier(0.5, 0, 0.75, 0);     /* exits: accelerate away */
+  --ease-in-out:    cubic-bezier(0.65, 0, 0.35, 1);    /* things moving A -> B on screen */
+  /* Legacy names: these used to overshoot. They are now plain ease-outs so
+     nothing in the product bounces; keep using them if you like the names. */
+  --ease-spring:      cubic-bezier(0.2, 0.9, 0.3, 1);
+  --ease-spring-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Common distances */
+  --move-sm: 4px;
+  --move-md: 8px;
+  --move-lg: 16px;
+
+  color-scheme: light;
+}
+
+/* ==========================================================================
+   DARK THEME  -  navy-tinted near-black, mint/teal accents
+   ========================================================================== */
+[data-theme="dark"] {
+  --logo-ink:       #f2f4f5;
+
+  --bg:             #0c1116;
+  --surface:        #121920;
+  --surface-2:      #172028;
+  --surface-3:      #1d2731;
+  --surface-glass:  rgb(12 17 22 / 0.92);
+  --border:         #212c36;
+  --border-strong:  #2d3a46;
+  --text:           #e4e9ed;
+  --text-muted:     #9aa6b0;
+  --text-subtle:    #67747f;
+
+  --primary:          #6cc2aa;               /* mint reads best on dark   */
+  --primary-hover:    #86d1bb;
+  --primary-soft:     rgb(108 194 170 / 0.11);
+  --primary-contrast: #0b1f1b;
+  --success:  #6cc2aa;  --success-soft: rgb(108 194 170 / 0.11);
+  --warning:  #7fa6c6;  --warning-soft: rgb(127 166 198 / 0.12);
+  --danger:   #cf7f78;  --danger-soft:  rgb(207 127 120 / 0.11);
+  --info:     #94a0aa;  --info-soft:    rgb(148 160 170 / 0.11);
+
+  --chart-1: #6cc2aa;   /* mint  */
+  --chart-2: #4f9aa6;   /* teal  */
+  --chart-3: #6f93b5;   /* navy, lifted for contrast */
+  --chart-4: #8b97a1;
+  --chart-5: #3e4a55;
+  --chart-bar:   #4f9aa6;
+  --chart-bar-2: #5d7f9e;
+
+  --accent-indigo:  #6f93b5;
+  --accent-violet:  #7fa6c6;
+  --accent-pink:    #7fb9bd;
+  --accent-rose:    #c9d1d7;
+  --accent-orange:  #8b97a1;
+  --accent-amber:   #6b7680;
+  --accent-emerald: #6cc2aa;
+  --accent-teal:    #4f9aa6;
+  --accent-sky:     #5f93b3;
+  --accent-slate:   #8b97a1;
+
+  --shadow-xs: 0 1px 1px rgb(0 0 0 / 0.25);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-md: 0 6px 16px -4px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 14px 36px -10px rgb(0 0 0 / 0.6);
+  --shadow-xl: 0 26px 60px -14px rgb(0 0 0 / 0.7);
+  --ring:      0 0 0 3px rgb(108 194 170 / 0.28);
+
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   USER PREFERENCES  -  accent colour and density (Settings > Appearance)
+   --------------------------------------------------------------------------
+   Global: base.html's head script reads localStorage "nimbus-accent" and
+   "nimbus-density" before first paint and sets html[data-accent] /
+   html[data-density] on EVERY page. settings.js changes them live.
+
+   Accents (logo colours only): teal (default = the tokens above, so
+   data-accent="teal" changes nothing), navy, mint, graphite (near-black).
+   Only --primary and its derived tokens change; charts keep the brand
+   palette. @property makes --primary animatable, so html.st-accent-anim
+   (added by the Settings page for ~400ms) eases to the new accent.
+   ========================================================================== */
+@property --primary { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --primary-hover { syntax: "<color>"; inherits: true; initial-value: transparent; }
+@property --primary-soft { syntax: "<color>"; inherits: true; initial-value: transparent; }
+
+html[data-accent="navy"]     { --st-accent: var(--brand-navy); }
+html[data-accent="mint"]     { --st-accent: color-mix(in srgb, var(--brand-mint) 60%, var(--brand-teal)); }
+html[data-accent="graphite"] { --st-accent: var(--brand-ink); }
+html[data-theme="dark"][data-accent="navy"]     { --st-accent: #7fa6c6; }            /* navy lifted for contrast on dark */
+html[data-theme="dark"][data-accent="mint"]     { --st-accent: #8fd8c1; }            /* brighter mint than the teal default */
+html[data-theme="dark"][data-accent="graphite"] { --st-accent: #e4e9ed; }            /* = --text: near-white on dark */
+html[data-accent]:not([data-accent="teal"]) {
+  --primary: var(--st-accent);
+  --primary-hover: color-mix(in srgb, var(--st-accent) 82%, var(--text));
+  --primary-soft: color-mix(in srgb, var(--st-accent) 10%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--st-accent) 28%, transparent);
+}
+html[data-theme="dark"][data-accent]:not([data-accent="teal"]) {
+  --primary-hover: color-mix(in srgb, var(--st-accent) 85%, var(--bg));
+  --primary-contrast: var(--brand-ink);
+}
+
+/* Compact density: a tighter spacing scale everywhere (cards, rows, gaps). */
+html[data-density="compact"] { --space-3: 10px; --space-4: 12px; --space-5: 14px; --space-6: 18px; }
+
+/* ==========================================================================
+   REDUCED MOTION
+   Because every animation reads these tokens, collapsing them here makes
+   the whole UI near-instant for users who ask for less motion. JS reads
+   `Nimbus.reducedMotion` for the same purpose.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-instant: 1ms;
+    --dur-fast:    1ms;
+    --dur-base:    1ms;
+    --dur-slow:    1ms;
+    --dur-data:    1ms;
+    --stagger:     0ms;
+    --move-sm: 0px; --move-md: 0px; --move-lg: 0px;
+  }
+}

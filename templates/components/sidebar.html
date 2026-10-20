@@ -1,0 +1,60 @@
+{% load nimbus %}
+<aside class="sidebar" aria-label="Main navigation">
+  <div class="sidebar-header">
+    <a class="brand" href="{% url 'overview' %}" aria-label="Control Panel home">
+      {% include "components/logo.html" %}
+    </a>
+    <button class="sidebar-collapse" type="button" data-sidebar-collapse aria-label="Collapse sidebar" aria-expanded="true"
+            data-tooltip="Toggle sidebar  [" data-tooltip-pos="right">
+      {% icon "chevron-left" %}
+    </button>
+  </div>
+
+  <div class="sidebar-resizer" role="separator" aria-orientation="vertical" tabindex="0"
+       aria-label="Resize sidebar" aria-valuemin="0" aria-valuemax="360" aria-valuenow="248"
+       title="Drag to resize, double-click to reset"></div>
+
+  <div class="sidebar-scroll">
+    <nav class="nav">
+      <span class="nav-indicator" aria-hidden="true"></span>
+      {% for section in nav_sections %}
+        <div class="nav-section-title">{{ section.title }}</div>
+        {% for item in section.items %}
+          <a class="nav-item{% if item.active %} is-active{% endif %}" href="{{ item.url }}"
+             {% if item.active %}aria-current="page"{% endif %}
+             data-tooltip="{{ item.label }}" data-tooltip-pos="right" data-tooltip-when="collapsed">
+            {% icon item.icon %}
+            <span class="nav-label">{{ item.label }}</span>
+            {% if item.badge %}<span class="nav-badge">{{ item.badge }}</span>{% endif %}
+          </a>
+        {% endfor %}
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="sidebar-footer">
+    <a class="sidebar-account" href="{% url 'settings' %}" data-tooltip="{{ current_user.name }}" data-tooltip-pos="right" data-tooltip-when="collapsed">
+      <span class="avatar avatar--sm" style="--c: var(--primary)">{{ current_user.initials }}</span>
+      <span class="nav-label sidebar-account__text">
+        <span class="sidebar-account__name">{{ current_user.name }}</span>
+        <span class="sidebar-account__meta">{{ current_user.role }}</span>
+      </span>
+    </a>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false"
+            data-tooltip="Toggle theme" data-tooltip-pos="right" data-tooltip-when="collapsed">
+      {# Sun <-> moon morph: see .theme-icon in components.css #}
+      <svg class="theme-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <mask id="theme-moon-mask">
+          <rect x="-4" y="-4" width="32" height="32" fill="#fff"/>
+          <circle class="theme-icon__mask" cx="25" cy="9" r="6.5" fill="#000"/>
+        </mask>
+        <circle class="theme-icon__core" cx="12" cy="12" r="4.6" fill="currentColor" mask="url(#theme-moon-mask)"/>
+        <g class="theme-icon__rays" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M12 1.8v2.2M12 20v2.2M4.8 4.8l1.5 1.5M17.7 17.7l1.5 1.5M1.8 12H4M20 12h2.2M4.8 19.2l1.5-1.5M17.7 6.3l1.5-1.5"/>
+        </g>
+      </svg>
+      <span class="nav-label">Dark mode</span>
+      <span class="switch-track" aria-hidden="true"></span>
+    </button>
+  </div>
+</aside>

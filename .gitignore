@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+media/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Tests / coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logo files are local only: never commit company logos.
+# Put your own logo in static/img/brand/ (see the README there).
+static/img/brand/*
+!static/img/brand/README.md
+!static/img/brand/.gitkeep

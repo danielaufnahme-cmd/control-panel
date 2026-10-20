@@ -1,0 +1,10 @@
+{% comment %} Card header. Usage:
+   {% include "components/card_header.html" with title="Revenue" subtitle="Last 30 days" link_url=some_url link_label="View all" %} {% endcomment %}
+{% load nimbus %}
+<div class="card-header">
+  <div>
+    <h3 class="card-title">{{ title }}</h3>
+    {% if subtitle %}<p class="card-subtitle">{{ subtitle }}</p>{% endif %}
+  </div>
+  {% if link_url %}<a class="card-link" href="{{ link_url }}">{{ link_label|default:"View all" }} {% icon "arrow-right" %}</a>{% endif %}
+</div>

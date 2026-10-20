@@ -1,0 +1,17 @@
+{% load nimbus %}
+{# Keyboard shortcuts modal, available on every page. #}
+<dialog class="modal" id="shortcuts-modal" aria-labelledby="shortcuts-title">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <div><h2 id="shortcuts-title">Keyboard shortcuts</h2></div>
+      <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+    </div>
+    <div class="modal-body">
+      <div class="list">
+        <div class="list-item"><span class="grow">Toggle sidebar</span><span class="kbd">[</span></div>
+        <div class="list-item"><span class="grow">Show shortcuts</span><span class="kbd">?</span></div>
+        <div class="list-item"><span class="grow">Close menus and dialogs</span><span class="kbd">Esc</span></div>
+      </div>
+    </div>
+  </div>
+</dialog>

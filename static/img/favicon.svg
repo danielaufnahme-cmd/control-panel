@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+<title>Control Panel (generic icon; your own mark in static/img/brand/mark.svg replaces it)</title>
+<rect x="2" y="2" width="28" height="28" rx="6" fill="#ffffff" stroke="#5c6670" stroke-width="2"/>
+<text x="16" y="20.5" text-anchor="middle" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="12" font-weight="600" fill="#3a434b" letter-spacing="0.3">CP</text>
+</svg>

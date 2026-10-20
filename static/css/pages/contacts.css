@@ -1,0 +1,517 @@
+/* ==========================================================================
+   CONTACTS PAGE  (templates/dashboard/contacts.html + js/pages/contacts.js)
+   Page-only styles. Only tokens (no hard-coded colors), so a palette change
+   in tokens.css re-colors this page automatically.
+   Visual rules: flat surfaces, thin borders, neutral greys for secondary
+   info, one accent (--primary). Motion: crisp ease-out, 150-300ms, no
+   overshoot, no idle loops (except skeleton shimmer / spinners).
+   Generic candidates for components.css later: .ct-check (animated checkbox),
+   .ct-bulk (floating bulk-action bar), .ct-seg (segmented radio group),
+   .ct-detail (full-screen detail dialog).
+   ========================================================================== */
+
+.ct-card [hidden], .ct-bulk [hidden] { display: none !important; }
+
+/* ---- Status colours: brand palette only (mint / teal / navy / grey) ---- */
+.page-contacts {
+  --ct-lead: var(--brand-mint);
+  --ct-active: var(--brand-teal);
+  --ct-vip: var(--brand-navy);
+  --ct-inactive: var(--border-strong);
+}
+[data-theme="dark"] .page-contacts { --ct-vip: var(--chart-3); --ct-active: var(--chart-2); }
+.ct-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.ct-dot--lead { background: var(--ct-lead); }
+.ct-dot--active { background: var(--ct-active); }
+.ct-dot--vip { background: var(--ct-vip); }
+.ct-dot--inactive { background: var(--ct-inactive); }
+.ct-status { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--text); }
+.ct-status--inactive { color: var(--text-subtle); }
+.ct-none { color: var(--text-subtle); }
+
+/* Neutral avatars: initials on a grey disc, no per-person colors. */
+.page-contacts .ct-avatar { --c: var(--text-muted); color: var(--text-muted); background: var(--surface-3); font-weight: 500; }
+/* No idle floating, no tinted bubble on the empty-state icon. */
+.page-contacts .empty-state__icon { animation: none; color: var(--text-subtle); background: transparent; box-shadow: inset 0 0 0 1px var(--border); }
+
+/* ---- KPI strip: one card, four columns, hairline dividers ---------------- */
+.ct-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: var(--space-5); overflow: hidden; }
+.ct-kpi {
+  position: relative; display: grid; grid-template-columns: 1fr auto; grid-template-rows: auto auto auto;
+  column-gap: var(--space-4); align-items: end;
+  padding: var(--space-5); text-align: left; color: inherit;
+  transition: background-color var(--dur-fast);
+}
+.ct-kpi + .ct-kpi { border-left: 1px solid var(--border); }
+.ct-kpi:hover { background: var(--surface-2); }
+.ct-kpi:focus-visible { box-shadow: inset var(--ring); border-radius: 0; }
+.ct-kpi::after {          /* current filter: thin accent rule along the bottom */
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--primary); transform: scaleX(0); transform-origin: left;
+  transition: transform var(--dur-base) var(--ease-out-expo);
+}
+.ct-kpi.is-current::after { transform: none; }
+.ct-kpi__label { grid-column: 1 / -1; color: var(--text-muted); }
+.ct-kpi__value { grid-column: 1; grid-row: 2; margin-top: var(--space-2); font-size: 24px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
+.ct-kpi__meta { grid-column: 1 / -1; grid-row: 3; color: var(--text-subtle); margin-top: 6px; }
+.ct-kpi__spark { grid-column: 2; grid-row: 2; width: 96px; height: 28px; color: var(--primary); align-self: end; margin-bottom: 3px; }
+.ct-kpi__spark svg { width: 100%; height: 100%; overflow: visible; }
+.ct-kpi__spark polyline { stroke-dasharray: 1; }
+.ct-kpis-wrap { container: ctkpis / inline-size; }
+@container ctkpis (max-width: 1000px) { .ct-kpi__spark { display: none; } }
+@container ctkpis (max-width: 700px) {
+  .ct-kpis { grid-template-columns: 1fr 1fr; }
+  .ct-kpi:nth-child(3) { border-left: 0; }
+  .ct-kpi:nth-child(n + 3) { border-top: 1px solid var(--border); }
+  .ct-kpi { padding: var(--space-4); }
+  .ct-kpi__meta { display: none; }
+}
+
+/* ---- Toolbar pill ------------------------------------------------------ */
+.ct-total-pill { box-shadow: none; }
+.ct-total-pill .icon { color: var(--text-subtle); }
+.ct-total-pill strong { min-width: 2.2ch; }
+@media (max-width: 760px) { .ct-total-hint { display: none; } }
+
+
+/* ---- Card toolbar ------------------------------------------------------ */
+.ct-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+.ct-toolbar__right { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.ct-status-scroll { max-width: 100%; overflow-x: auto; scrollbar-width: none; border-radius: var(--radius-md); }
+.ct-status-scroll::-webkit-scrollbar { display: none; }
+.ct-status .tab { display: inline-flex; align-items: center; gap: 6px; }
+.ct-status .tab .ct-count { margin-left: 4px; }
+.ct-count {
+  display: inline-block; min-width: 20px; padding: 0 5px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-base); font-weight: 400; line-height: 18px; text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-subtle);
+  transition: color var(--dur-fast), opacity var(--dur-fast);
+}
+.tab.is-active .ct-count { color: var(--text); }
+.ct-count.is-zero { opacity: 0.5; }
+
+/* Search: icon tints and the field widens on focus; clear button fades in. */
+.ct-search { position: relative; display: block; }
+.ct-search > .icon {
+  position: absolute; left: 10px; top: 50%; translate: 0 -50%;
+  width: 16px; height: 16px; color: var(--text-subtle); pointer-events: none;
+  transition: color var(--dur-fast);
+}
+.ct-search:focus-within > .icon { color: var(--primary); }
+.ct-search .input {
+  width: 230px; height: 32px; padding: 0 30px 0 32px;
+  font-size: var(--text-base); background: var(--surface);
+  border-color: var(--border);
+  transition: border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.ct-search .input:focus { width: 290px; }
+/* Width eases only while the toolbar has fixed widths, so a container-query
+   switch (resize, sidebar toggle) snaps instead of animating. */
+@container ctlist (min-width: 901px) {
+  .ct-search .input { transition: width var(--dur-base) var(--ease-out-expo), border-color var(--dur-fast), box-shadow var(--dur-fast); }
+}
+.ct-search .input::-webkit-search-cancel-button { display: none; }
+.ct-search__clear {
+  position: absolute; right: 6px; top: 50%;
+  width: 22px; height: 22px; margin-top: -11px;
+  display: grid; place-items: center; border-radius: var(--radius-full);
+  color: var(--text-subtle);
+  opacity: 0; transform: scale(0.85); pointer-events: none;
+  transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out-expo), background-color var(--dur-fast), color var(--dur-fast);
+}
+.ct-search__clear:hover { background: var(--surface-3); color: var(--text); }
+.ct-search.has-value .ct-search__clear { opacity: 1; transform: none; pointer-events: auto; }
+
+.ct-sort-btn { box-shadow: none; }
+.ct-sort-btn b { font-weight: 400; color: var(--text); }
+.ct-sort-btn .ct-dir { display: grid; color: var(--text-subtle); transition: transform var(--dur-base) var(--ease-out-expo); }
+.ct-sort-btn .ct-dir.is-flipped { transform: rotate(180deg); }
+.ct-sort-btn .ct-dir .icon { width: 14px; height: 14px; }
+.ct-tick { margin-left: auto; display: grid; opacity: 0; transition: opacity var(--dur-fast); }
+.ct-tick .icon { color: var(--primary) !important; }
+.dropdown-item.is-current { color: var(--text); }
+.dropdown-item.is-current .ct-tick { opacity: 1; }
+
+.ct-view .tab { padding: 5px 9px; display: grid; place-items: center; }
+.ct-view .icon { width: 16px; height: 16px; }
+
+/* ---- Table ------------------------------------------------------------- */
+.ct-card .table-wrap { margin: 0; }
+/* Fixed layout so long emails truncate instead of pushing the actions off-card. */
+.ct-table { table-layout: fixed; min-width: 0; }
+.ct-table th { background: transparent; }
+.ct-table td, .ct-table th { padding-top: 12px; padding-bottom: 12px; }
+.ct-table th:first-child, .ct-table td:first-child { padding-right: 0; width: 44px; }
+.ct-table .ct-col-company { width: 20%; }
+.ct-table th:nth-child(4) { width: 118px; }
+.ct-table .ct-col-tags { width: 19%; }
+.ct-table .ct-col-last { width: 140px; }
+.ct-table .ct-tags { display: block; }
+.ct-col-actions { width: 128px; text-align: right; }
+.ct-th-sort {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+  transition: color var(--dur-fast);
+}
+.ct-th-sort:hover, .ct-th-sort.is-active { color: var(--text); }
+.ct-th-arrow { display: grid; opacity: 0; transition: opacity var(--dur-fast), transform var(--dur-base) var(--ease-out-expo); }
+.ct-th-arrow .icon { width: 13px; height: 13px; }
+.ct-th-sort:hover .ct-th-arrow { opacity: 0.5; }
+.ct-th-sort.is-active .ct-th-arrow { opacity: 1; }
+.ct-th-sort.is-active.is-desc .ct-th-arrow { transform: rotate(180deg); }
+
+.ct-row { cursor: pointer; outline: none; }
+.ct-row td { transition: background-color var(--dur-fast), box-shadow var(--dur-fast); }
+.ct-row:focus-visible td { background: var(--surface-2); }
+.ct-row:focus-visible td:first-child { box-shadow: inset 2px 0 0 var(--primary); }
+.ct-row.is-selected td { background: var(--surface-2); }
+.ct-row.is-selected td:first-child,
+.ct-row.is-open-in-drawer td:first-child { box-shadow: inset 2px 0 0 var(--primary); }
+
+.ct-person { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.ct-person .grow { min-width: 0; }
+.ct-name { font-size: var(--text-base); font-weight: 400; color: var(--text); }
+.ct-name-sm { font-size: var(--text-base); font-weight: 400; color: var(--text); }
+.ct-sub { font-size: var(--text-base); color: var(--text-subtle); }
+.ct-person .ct-sub, .ct-col-company .ct-sub { margin-top: 2px; }
+.ct-hl { background: var(--primary-soft); color: inherit; border-radius: 3px; padding: 0 1px; }
+.ct-tags { color: var(--text-muted); }
+.ct-tag-more { color: var(--text-subtle); }
+
+/* Quick actions slide in on hover, one after another. */
+.ct-actions { display: inline-flex; gap: 2px; justify-content: flex-end; }
+.ct-row .ct-actions > * {
+  opacity: 0; transform: translateX(4px);
+  transition: opacity var(--dur-fast), transform var(--dur-fast) var(--ease-out-expo), background-color var(--dur-fast), color var(--dur-fast);
+}
+.ct-row:is(:hover, :focus-within, .is-menu-open) .ct-actions > * { opacity: 1; transform: none; }
+.ct-row:is(:hover, :focus-within, .is-menu-open) .ct-actions > :nth-child(2) { transition-delay: 20ms; }
+.ct-row:is(:hover, :focus-within, .is-menu-open) .ct-actions > :nth-child(3) { transition-delay: 40ms; }
+.ct-actions .icon-btn { color: var(--text-subtle); }
+.ct-actions .icon-btn:hover { color: var(--text); background: var(--surface-3); }
+@media (hover: none) and (pointer: coarse) { .ct-row .ct-actions > * { opacity: 1; transform: none; } }
+
+/* Freshly added contact: soft highlight that fades out. */
+.ct-row.is-new td, .ct-tile.is-new { animation: ct-new-flash 1.4s var(--ease-out-quart); }
+@keyframes ct-new-flash { 0%, 30% { background-color: var(--primary-soft); } }
+
+/* ---- Checkbox (check fades in; no drawn-stroke effect) ----------------- */
+.ct-check { position: relative; display: inline-grid; place-items: center; width: 16px; height: 16px; cursor: pointer; vertical-align: middle; }
+.ct-check input { position: absolute; inset: -7px; width: auto; height: auto; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.ct-check span {
+  position: relative; width: 16px; height: 16px;
+  display: grid; place-items: center;
+  border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--primary-contrast);
+  transition: background-color var(--dur-fast), border-color var(--dur-fast), box-shadow var(--dur-fast);
+}
+.ct-check:hover span { border-color: var(--text-subtle); }
+.ct-check input:focus-visible + span { box-shadow: var(--ring); }
+.ct-check svg { width: 11px; height: 11px; }
+.ct-check svg { opacity: 0; transition: opacity var(--dur-fast); }
+.ct-check input:checked + span { background: var(--primary); border-color: var(--primary); }
+.ct-check input:checked + span svg { opacity: 1; }
+.ct-check input:indeterminate + span { background: var(--primary); border-color: var(--primary); }
+.ct-check input:indeterminate + span::after { content: ""; position: absolute; width: 8px; height: 1.5px; border-radius: 2px; background: var(--primary-contrast); }
+.ct-check input:indeterminate + span svg { display: none; }
+
+/* ---- Card (grid) view ---------------------------------------------------- */
+.ct-grid {
+  display: grid; gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  padding: var(--space-5);
+}
+.ct-tile {
+  position: relative; min-width: 0;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: var(--space-5) var(--space-4) var(--space-3);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface); cursor: pointer; outline: none;
+  transition: border-color var(--dur-fast), box-shadow var(--dur-base) var(--ease-out-expo);
+}
+.ct-tile:not(.ct-skel):hover { border-color: var(--border-strong); box-shadow: var(--shadow-sm); }
+.ct-tile:focus-visible { box-shadow: var(--ring); }
+.ct-tile.is-selected { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.ct-tile.is-open-in-drawer { border-color: var(--text-subtle); }
+.ct-tile .avatar { margin-bottom: 10px; }
+.ct-tile .ct-name { max-width: 100%; font-size: var(--text-base); }
+.ct-tile > .ct-sub { max-width: 100%; margin-bottom: 10px; }
+.ct-tile .ct-tags { margin-top: 10px; margin-bottom: 14px; min-height: 20px; }
+.ct-tile__foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; margin-top: auto; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.ct-tile__last { display: inline-flex; align-items: center; gap: 5px; }
+.ct-tile__last .icon { width: 13px; height: 13px; }
+.ct-tile__check, .ct-tile__more {
+  position: absolute; top: 14px;
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.ct-tile__check { right: 46px; top: 21px; }
+.ct-tile__more { right: 10px; }
+.ct-tile:is(:hover, :focus-within, .is-selected, .is-menu-open) :is(.ct-tile__check, .ct-tile__more),
+.ct-card.has-selection .ct-tile__check { opacity: 1; }
+@media (hover: none) and (pointer: coarse) { .ct-tile__check, .ct-tile__more { opacity: 1; } }
+.ct-tile.ct-skel { cursor: default; min-height: 210px; }
+
+
+/* ---- Empty + footer ------------------------------------------------------ */
+.ct-empty { padding-bottom: var(--space-8); }
+.ct-empty .empty-state { padding-bottom: var(--space-3); }
+.ct-empty__actions { justify-content: center; }
+.ct-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+.ct-footer strong { color: var(--text); font-weight: 400; }
+.ct-footer .btn { box-shadow: none; }
+
+/* ---- Bulk-action bar ------------------------------------------------------ */
+.ct-bulk {
+  position: fixed; left: 50%; bottom: 24px; z-index: 80;
+  display: flex; align-items: center; gap: 2px;
+  padding: 6px 6px 6px 8px;
+  border-radius: var(--radius-lg);
+  background: var(--text); color: var(--bg);
+  box-shadow: var(--shadow-lg);
+  /* Closed: below the fold. Exit is faster than enter. */
+  transform: translate(-50%, calc(100% + 40px));
+  opacity: 0; visibility: hidden;
+  transition: transform var(--dur-fast) var(--ease-in), opacity var(--dur-fast) var(--ease-in), visibility 0s linear var(--dur-fast);
+}
+.ct-bulk.is-open {
+  transform: translate(-50%, 0); opacity: 1; visibility: visible;
+  transition: transform var(--dur-base) var(--ease-out-expo), opacity var(--dur-fast) var(--ease-out-quart), visibility 0s;
+}
+.ct-bulk__count { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 6px; font-size: var(--text-base); font-weight: 400; white-space: nowrap; }
+.ct-bulk__count strong { display: inline-block; min-width: 1.6ch; font-weight: 500; text-align: right; }
+.ct-bulk__btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 11px; border-radius: var(--radius-md);
+  font-size: var(--text-base); font-weight: 400; white-space: nowrap; color: inherit;
+  position: relative; overflow: hidden;
+  transition: background-color var(--dur-fast), color var(--dur-fast);
+}
+.ct-bulk__btn .icon { width: 16px; height: 16px; opacity: 0.75; }
+.ct-bulk__btn:hover { background: color-mix(in srgb, var(--bg) 12%, transparent); }
+.ct-bulk__all { color: color-mix(in srgb, var(--bg) 65%, transparent); }
+.ct-bulk__close { width: 34px; padding: 0; justify-content: center; }
+.ct-bulk__sep { width: 1px; height: 18px; margin: 0 4px; background: color-mix(in srgb, var(--bg) 20%, transparent); }
+.ct-bulk__btn.is-loading::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px;
+  border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 600ms linear infinite;
+}
+.ct-bulk__btn.is-loading > * { opacity: 0; }
+@media (max-width: 760px) {
+  .ct-bulk { left: 12px; right: 12px; bottom: 12px; justify-content: space-between; transform: translateY(calc(100% + 40px)); }
+  .ct-bulk.is-open { transform: none; }
+  .ct-bulk__sep, .ct-bulk__all { display: none; }
+  .ct-bulk__btn { padding: 0 10px; }
+}
+
+/* ---- Shared row "more" menu (fixed wrapper placed over the button) ------- */
+.ct-row-menu { position: fixed; z-index: 90; pointer-events: none; }
+.ct-row-menu .dropdown-menu { pointer-events: auto; min-width: 190px; }
+.ct-row-menu.is-up .dropdown-menu { top: auto; bottom: calc(100% + 8px); transform-origin: bottom right; }
+
+/* ---- Full-screen contact detail ----------------------------------------- */
+.ct-detail { width: 100vw; height: 100vh; height: 100dvh; max-width: none; max-height: none; margin: 0; }
+.ct-detail::backdrop { background: color-mix(in srgb, var(--bg) 40%, transparent); backdrop-filter: none; }
+.ct-detail .modal-panel {
+  height: 100%; max-height: none;
+  border: 0; border-radius: 0; box-shadow: none;
+  background: var(--bg);
+}
+.ct-detail .modal-panel:focus { outline: none; }
+/* Opening is driven by JS (short fade + rise); keep the default fast exit. */
+.ct-detail[open]:not(.is-closing) .modal-panel { animation: none; }
+
+.ct-dt-bar {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-3);
+  height: var(--topbar-h); padding: 0 var(--space-8);
+  border-bottom: 1px solid var(--border); background: var(--surface);
+  flex: none;
+}
+.ct-dt-back { justify-self: start; margin-left: -10px; }
+.ct-dt-nav { justify-self: center; }
+.ct-dt-actions { justify-self: end; }
+.ct-dt-actions .btn:not(.btn--primary) { box-shadow: none; }
+.ct-dt-bar .icon-btn:disabled { opacity: 0.35; pointer-events: none; }
+.ct-dw-pos { margin-left: 6px; min-width: 64px; }
+
+.ct-dt-body { flex: 1; padding: var(--space-10) var(--space-8) var(--space-16); }
+.ct-dt-body > * { max-width: 1180px; margin-left: auto; margin-right: auto; }
+
+.ct-dt-head { display: flex; align-items: center; gap: var(--space-5); margin-bottom: var(--space-8); }
+.ct-dt-head .avatar--xl { --size: 72px; font-size: 24px; }
+.ct-dt-head h2 { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+.ct-dt-role { font-size: var(--text-base); color: var(--text-muted); margin-top: 4px; }
+.ct-dt-role strong { color: var(--text-muted); font-weight: 400; }
+.ct-dt-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; margin-top: 12px; font-size: var(--text-base); color: var(--text-subtle); }
+.ct-dt-meta > span:not(.badge) { display: inline-flex; align-items: center; gap: 5px; }
+
+.ct-dt-grid { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+.ct-dt-main, .ct-dt-side { display: flex; flex-direction: column; gap: var(--space-6); }
+
+.ct-dt-panel {
+  padding: var(--space-5) var(--space-6);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.ct-dw-h { font-size: var(--text-base); font-weight: 500; color: var(--text); margin-bottom: var(--space-4); }
+.ct-dw-h + .ct-none { margin-top: calc(var(--space-4) * -1 + 2px); }
+.ct-dt-panel .row-between .ct-dw-h { margin-bottom: 0; }
+.ct-dw-chart { margin-top: var(--space-4); }
+
+.ct-dt-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface);
+}
+.ct-dt-stat { padding: var(--space-5) var(--space-6); }
+.ct-dt-stat + .ct-dt-stat { border-left: 1px solid var(--border); }
+.ct-dt-stat span { display: block; font-size: var(--text-base); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ct-dt-stat strong { display: block; margin-top: 8px; font-size: 24px; font-weight: 500; letter-spacing: -0.02em; }
+
+/* Activity: plain two-column list (time | event), hairline separators. */
+.ct-timeline { list-style: none; margin: 0; padding: 0; }
+.ct-timeline li { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: var(--space-4); padding: 14px 0; color: var(--text-muted); }
+.ct-timeline li + li { border-top: 1px solid var(--border); }
+.ct-timeline li:first-child { padding-top: 0; }
+.ct-timeline li:last-child { padding-bottom: 0; }
+.ct-timeline time { color: var(--text-subtle); }
+.ct-timeline strong { color: var(--text); font-weight: 400; }
+.ct-dt-trend { color: var(--text-muted); white-space: nowrap; }
+@media (max-width: 560px) { .ct-timeline li { grid-template-columns: 1fr; gap: 2px; } }
+
+.ct-dw-dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 14px 20px; font-size: var(--text-base); align-items: center; }
+.ct-dw-dl dt { color: var(--text-subtle); }
+.ct-dw-dl dd { margin: 0; min-width: 0; font-weight: 400; text-align: right; }
+.ct-dw-dl dd.row { justify-content: flex-end; }
+.ct-dw-dl a { display: block; color: var(--text); }
+.ct-dw-dl a:hover { color: var(--primary); }
+.ct-dt-note { font-size: var(--text-base); color: var(--text-muted); line-height: 1.6; }
+
+@media (max-width: 1000px) {
+  .ct-dt-grid { grid-template-columns: 1fr; }
+  .ct-dt-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ct-dt-stat:nth-child(3) { border-left: 0; }
+  .ct-dt-stat:nth-child(n + 3) { border-top: 1px solid var(--border); }
+}
+@media (max-width: 760px) {
+  .ct-dt-bar { padding: 0 var(--space-4); grid-template-columns: auto 1fr auto; }
+  .ct-dt-back span { display: none; }
+  .ct-dt-actions [data-drawer-action="delete"] { display: none; }
+  .ct-dt-nav { justify-self: start; }
+  .ct-dw-pos { display: none; }
+  .ct-dt-body { padding: var(--space-6) var(--space-4) var(--space-12); }
+  .ct-dt-head { gap: var(--space-4); margin-bottom: var(--space-6); }
+  .ct-dt-head .avatar--xl { --size: 56px; }
+  .ct-dt-panel { padding: var(--space-4); }
+  .ct-dt-stat { padding: var(--space-4); }
+}
+
+/* ---- Add-contact form ------------------------------------------------------ */
+.input.is-invalid { border-color: var(--text); }
+.input.is-invalid:focus { border-color: var(--text); box-shadow: 0 0 0 3px var(--surface-3); }
+.ct-error {
+  color: var(--text);
+  max-height: 0; opacity: 0; transform: translateY(-4px); overflow: hidden;
+  transition: opacity var(--dur-fast), transform var(--dur-base) var(--ease-out-expo), max-height var(--dur-base) var(--ease-out-expo);
+}
+.ct-error.is-visible { max-height: 24px; opacity: 1; transform: none; }
+.field:has(.ct-error:not(.is-visible)) { gap: 6px; }
+
+/* Segmented radio group (status picker). */
+.ct-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.ct-seg label { position: relative; }
+.ct-seg input { position: absolute; opacity: 0; }
+.ct-seg span {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 32px; padding: 0 12px; border-radius: var(--radius-full);
+  border: 1px solid var(--border); font-size: var(--text-base); font-weight: 400; color: var(--text-muted);
+  cursor: pointer;
+  transition: background-color var(--dur-fast), color var(--dur-fast), border-color var(--dur-fast);
+}
+.ct-seg span:hover { color: var(--text); border-color: var(--border-strong); }
+.ct-seg input:checked + span { color: var(--text); border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.ct-seg input:focus-visible + span { box-shadow: var(--ring); }
+
+/* ---- Responsive --------------------------------------------------------- */
+/* Container queries on the list card, so the sidebar width (expanded, resized,
+   collapsed) counts, not just the viewport. Columns drop in order of value:
+   tags -> hover actions -> last contacted -> company. */
+.ct-list-grid { container: ctlist / inline-size; }
+@container ctlist (max-width: 1080px) { .ct-col-tags { display: none; } }
+@container ctlist (max-width: 900px) {
+  .ct-toolbar { padding: var(--space-3) var(--space-4); }
+  .ct-toolbar__right { width: 100%; }
+  .ct-search { flex: 1; min-width: 0; }
+  .ct-search .input, .ct-search .input:focus { width: 100%; }
+}
+@container ctlist (max-width: 820px) {
+  .ct-table .ct-col-actions { display: none; }   /* tap opens the detail view, which has email/call */
+  .ct-table .ct-col-company { width: 32%; }
+}
+@container ctlist (max-width: 680px) {
+  .ct-col-last { display: none; }
+  .ct-table .ct-col-company { width: 40%; }
+}
+@container ctlist (max-width: 540px) {
+  .ct-col-company { display: none; }
+  .ct-table td, .ct-table th { padding-left: var(--space-3); padding-right: var(--space-3); }
+  .ct-table th:nth-child(4) { width: 92px; }
+  .ct-table th:first-child, .ct-table td:first-child { width: 36px; }
+  .ct-grid { padding: var(--space-4); grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+  .ct-footer { padding: var(--space-3) var(--space-4); }
+  /* Search gets its own full-width line; sort + view toggle sit under it. */
+  .ct-search { flex: 1 1 100%; }
+}
+@container ctlist (max-width: 400px) {
+  .ct-grid { grid-template-columns: 1fr; }
+}
+
+/* Crisp ease-out (no overshoot) for the shared sliding tab indicator on this page. */
+.page-contacts .tabs-indicator { transition-timing-function: var(--ease-out-expo); transition-duration: var(--dur-base); }
+
+
+/* ---- Type: one family, 14px everywhere on this page; 24px only for key
+   numbers and the contact's name. Shared components are nudged here. --- */
+.page-contacts :is(.page, dialog) :is(.btn, .tab, .dropdown-item, .input, .label, .empty-state p, .empty-state h3) { font-size: var(--text-base); }
+.page-contacts .ct-table th { font-size: var(--text-base); text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--text-subtle); }
+.page-contacts .tabs--pill .tab { font-weight: 400; }
+.page-contacts .dropdown-label { font-size: var(--text-base); text-transform: none; letter-spacing: 0; font-weight: 400; }
+.page-contacts .empty-state h3 { font-weight: 500; }
+.ct-count { min-width: 0; padding: 0 0 0 2px; }
+.ct-dt-meta { gap: 6px 20px; }
+.page-contacts .ct-avatar:not(.avatar--xl):not(.avatar--xs) { font-size: var(--text-base); }
+.ct-col-last .ct-sub { white-space: nowrap; }
+
+/* No decorative icons: the empty state is text + actions only; toolbar holds just the actions. */
+.ct-empty .empty-state__icon { display: none; }
+.ct-page-toolbar { justify-content: flex-end; }
+
+/* Forms and modal titles: same calm weights as the rest of the page. */
+.page-contacts dialog :is(.label, .modal-header p) { font-weight: 400; }
+.page-contacts dialog .modal-header h2 { font-weight: 500; }
+.page-contacts dialog .field { gap: 8px; }
+.ct-tile h4.ct-name { font-weight: 400; }
+
+/* Narrow list: status tabs drop their counts and dots so all five fit on one
+   line (the KPI strip above still shows the totals). */
+@container ctlist (max-width: 540px) {
+  .ct-status .ct-count, .ct-status .ct-dot { display: none; }
+  .ct-status .tab { padding-inline: 10px; }
+  .ct-status-scroll { overflow: visible; }
+}
+/* Resizing (shell sets html.is-resizing): no transitions on this page. */
+html.is-resizing .page-contacts .page *, html.is-resizing .ct-kpis * { transition: none !important; }

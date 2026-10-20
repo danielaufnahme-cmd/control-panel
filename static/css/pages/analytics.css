@@ -1,0 +1,163 @@
+/* ==========================================================================
+   ANALYTICS PAGE  (loaded only by templates/dashboard/analytics.html)
+   Everything here uses tokens, so light/dark and reduced motion just work.
+   Prefix: .an-*
+
+   Layout is driven by CONTAINER queries, not the viewport, so it follows
+   the real content width (sidebar expanded, collapsed or resized):
+     .an-root   container "an"  -> card column spans
+     .card      anonymous container -> widget internals (rows, headers, table)
+   ========================================================================== */
+
+.an-root { container: an / inline-size; }
+.an-root .card { container-type: inline-size; min-width: 0; }
+
+/* ---- Card spans: side by side only when the content area is wide ------- */
+.an-root .grid > .col-8 { grid-column: span 8; }
+.an-root .grid > .col-7 { grid-column: span 7; }
+.an-root .grid > .col-5 { grid-column: span 5; }
+.an-root .grid > .col-4 { grid-column: span 4; }
+@container an (max-width: 999px) {
+  .an-root .grid > [class*="col-"] { grid-column: 1 / -1; }
+}
+
+/* ---- Toolbar range label ----------------------------------------------- */
+.an-range-label { font-size: var(--text-base); font-weight: 400; color: var(--text-muted); }
+
+/* ---- Series toggle chips (chart legend that filters) ------------------- */
+.an-series { --gap: 8px; justify-content: flex-end; }
+.an-series .chip { height: 28px; padding: 0 12px; gap: 8px; font-size: var(--text-base); }
+.an-series .chip:not(.is-active) { color: var(--text-subtle); }
+.an-key {
+  display: inline-block; flex: none; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--c); transition: background-color var(--dur-fast);
+}
+.an-key--dash {
+  width: 12px; height: 0; border-radius: 0; background: none;
+  border-top: 2px dashed var(--c); transition: border-color var(--dur-fast);
+}
+.an-series .chip:not(.is-active) .an-key { background: var(--border-strong); }
+.an-series .chip:not(.is-active) .an-key--dash { background: none; border-top-color: var(--border-strong); }
+
+/* ---- Mini stats (Traffic card) and revenue meta ------------------------ */
+.an-ministats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0 0 var(--space-5);
+  border: 1px solid var(--border); border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.an-ministats > div { padding: 12px 16px; min-width: 0; }
+.an-ministats > div + div { border-left: 1px solid var(--border); }
+.an-ministats dt, .an-rev-meta dt {
+  font-size: var(--text-base); color: var(--text-muted); line-height: 1.5;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.an-ministats dd, .an-rev-meta dd {
+  margin: 2px 0 0; font-size: var(--text-base); font-weight: 500; color: var(--text); line-height: 1.5;
+  white-space: nowrap;
+}
+.an-rev-meta { display: flex; gap: var(--space-6); text-align: right; }
+.an-rev-total { margin-top: 2px; font-size: var(--text-base); line-height: 1.5; }
+.an-rev-total [data-rev-total] { font-weight: 500; }
+
+@container (max-width: 560px) {
+  .an-ministats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .an-ministats > div:nth-child(3) { border-left: 0; }
+  .an-ministats > div:nth-child(n+3) { border-top: 1px solid var(--border); }
+}
+/* Headers with controls stack when the card is narrow. */
+@container (max-width: 560px) {
+  .card-header:has(.an-series),
+  .card-header:has(.an-rev-meta),
+  .card-header:has([data-hours-tabs]) { flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+  .an-series { justify-content: flex-start; }
+  .an-rev-meta { text-align: left; }
+}
+
+/* ---- Funnel ------------------------------------------------------------ */
+/* Each step: label | count | rate on one line, 8px gap, then the bar.      */
+.an-funnel-card { display: flex; flex-direction: column; }
+.an-funnel { flex: 1; align-content: space-evenly; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px 40px; }
+.an-step__head {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: baseline; column-gap: 16px;
+  margin-bottom: 8px; font-size: var(--text-base); line-height: 1.5;
+}
+.an-step__label { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.an-step__value { color: var(--text); text-align: right; white-space: nowrap; }
+.an-step__rate { min-width: 9.5em; color: var(--text-muted); text-align: right; white-space: nowrap; }
+.an-step .progress { height: 6px; }
+.an-funnel-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; font-size: var(--text-base); }
+.an-funnel-total { font-weight: 500; color: var(--text); }
+@container (max-width: 300px) {
+  .an-step__rate { min-width: 0; }
+}
+@container (min-width: 600px) {
+  .an-funnel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---- Channel share bar -------------------------------------------------- */
+.an-share {
+  display: flex; gap: 2px; height: 8px; margin-bottom: var(--space-5);
+  transform: scaleX(0); transform-origin: left;
+}
+.an-share.is-in { transform: none; transition: transform var(--dur-data) var(--ease-out-expo); }
+html:not(.js) .an-share { transform: none; }
+.an-share > span {
+  flex: var(--share, 1) 1 0; min-width: 4px;
+  border-radius: 2px; background: var(--c);
+  transition: flex-grow var(--dur-data) var(--ease-out-expo), opacity var(--dur-fast);
+}
+.an-share > span:hover { opacity: 0.8; }
+
+/* ---- Rows: channels and countries --------------------------------------- */
+/* label (left) | visits (right) | share (right), bar 8px below, 14px between rows. */
+.an-rows { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px 40px; }
+.an-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 3.75em;
+  align-items: center; column-gap: 16px;
+  font-size: var(--text-base); line-height: 1.5;
+}
+.an-row__label { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--text); }
+.an-swatch { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.an-row__visits { color: var(--text); text-align: right; white-space: nowrap; }
+.an-row__share { color: var(--text-muted); text-align: right; white-space: nowrap; }
+.an-row__bar { grid-column: 1 / -1; margin-top: 8px; }
+@container (min-width: 600px) {
+  .an-rows { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ---- Traffic by hour summary ------------------------------------------- */
+.an-hours-summary {
+  display: flex; flex-wrap: wrap; gap: 8px 32px;
+  margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--border);
+  font-size: var(--text-base); line-height: 1.5;
+}
+.an-hours-item { display: inline-flex; flex-wrap: wrap; gap: 0 12px; color: var(--text); }
+.an-hours-item__label { color: var(--text-muted); }
+
+/* ---- Top pages table ----------------------------------------------------- */
+.an-page { display: flex; flex-direction: column; min-width: 0; }
+.an-page__title { font-weight: 400; white-space: nowrap; }
+.an-page__path { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--text-subtle); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.an-views { display: grid; grid-template-columns: 64px minmax(80px, 1fr); align-items: center; gap: 16px; min-width: 200px; }
+.an-pages tbody tr { position: relative; }
+.an-sort {
+  display: inline-flex; align-items: center; gap: 4px;
+  font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+  border-radius: var(--radius-xs);
+  transition: color var(--dur-fast);
+}
+.an-sort:hover, .an-sort.is-active { color: var(--text); }
+@container (max-width: 900px) {
+  .an-col-time { display: none; }
+}
+@container (max-width: 720px) {
+  .an-col-bounce { display: none; }
+  .an-views { min-width: 140px; grid-template-columns: 56px minmax(48px, 1fr); }
+}
+@container (max-width: 440px) {
+  .an-col-change { display: none; }
+  .an-views { min-width: 0; grid-template-columns: auto; }
+  .an-views .progress { display: none; }
+}

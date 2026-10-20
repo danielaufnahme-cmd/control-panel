@@ -1,0 +1,17 @@
+{% load nimbus %}{% comment %} KPI card. Context: stat = {label, value, prefix, suffix, decimals, change, change_suffix, spark}
+   Usage: {% include "components/stat_card.html" with stat=kpi %}
+   Must be a direct child of a [data-stagger] container (or add data-animate).
+   House style: label, number + plain delta, then the sparkline on its own row.
+   No icons, no per-KPI colours, no "vs prior period" captions.
+   (`icon`, `color`, `period` keys are accepted but ignored.)
+   Percentages (suffix "%" or change_suffix "%") always show 1 decimal. {% endcomment %}
+<article class="card stat-card">
+  <div class="stat-label">{{ stat.label }}</div>
+  <div class="stat-card__main">
+    <span class="stat-value" data-countup="{{ stat.value }}" data-prefix="{{ stat.prefix }}" data-suffix="{{ stat.suffix }}" data-decimals="{{ stat.decimals|default:0 }}">{{ stat.prefix }}{{ stat.value }}{{ stat.suffix }}</span>
+    {% with suf=stat.change_suffix|default:"%" %}
+    <span class="trend {% if stat.change >= 0 %}trend--up{% else %}trend--down{% endif %}">{% if stat.change >= 0 %}+{% endif %}{% if suf == "%" %}{{ stat.change|floatformat:1 }}{% else %}{{ stat.change }}{% endif %}{{ suf }}</span>
+    {% endwith %}
+  </div>
+  {% if stat.spark %}<div class="sparkline stat-card__spark" data-sparkline="{{ stat.spark|join:',' }}"></div>{% endif %}
+</article>

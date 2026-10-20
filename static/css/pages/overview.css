@@ -1,0 +1,234 @@
+/* ==========================================================================
+   OVERVIEW PAGE  (loaded only by templates/dashboard/overview.html)
+   Page-scoped on purpose (prefix .ov-*): own 12-col grid, own lists/tables,
+   so changes to shared components can't break the layout.
+
+   Responsive model
+     .ov-root   size container "ov"  -> grid spans + KPI columns follow the
+                width the page really has (sidebar expanded/collapsed/resized)
+     .ov-card   size container        -> each widget drops table columns /
+                reflows rows from its own width
+   Type: 14px everywhere, 12px for meta/sub lines, 24px for key numbers only.
+   Weights: 500 for card titles and key numbers, 400 for everything else.
+   ========================================================================== */
+
+.ov-root { container: ov / inline-size; }
+.ov-root ul, .ov-root ol { list-style: none; margin: 0; padding: 0; }
+
+.ov-card { padding: var(--space-5); min-width: 0; container-type: inline-size; }
+
+/* ---- Toolbar ------------------------------------------------------------ */
+.ov-toolbar {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: var(--space-3); margin-bottom: var(--space-4);
+}
+.ov-period { margin: 0; font-size: var(--text-base); color: var(--text); line-height: 1.5; }
+.ov-actions { display: flex; gap: var(--space-2); }
+
+/* ---- Grid: one gap (16px) everywhere --------------------------------------- */
+.ov-kpis, .ov-grid { display: grid; gap: var(--space-4); }
+.ov-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); margin-bottom: var(--space-4); }
+.ov-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: start; }
+.ov-c4 { grid-column: span 4; }
+.ov-c6 { grid-column: span 6; }
+.ov-c8 { grid-column: span 8; }
+/* Cards in one row share a height; content sits at the top. */
+.ov-grid > .ov-card { align-self: stretch; }
+
+/* ---- Card header ------------------------------------------------------------ */
+.ov-head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  min-height: 28px; margin-bottom: var(--space-4);
+}
+.ov-title { margin: 0; font-size: var(--text-base); font-weight: 500; line-height: 1.4; color: var(--text); }
+.ov-meta { font-size: var(--text-xs); color: var(--text-subtle); white-space: nowrap; }
+.ov-link {
+  flex: none; white-space: nowrap; font-size: var(--text-sm); font-weight: 400;
+  color: var(--text-muted); text-decoration: none; transition: color var(--dur-fast) var(--ease-out-quart);
+}
+.ov-link:hover { color: var(--primary); }
+
+/* ---- Text helpers ------------------------------------------------------------ */
+.ov-name { color: var(--text); font-weight: 400; }
+.ov-sub { display: block; margin-top: 2px; font-size: var(--text-xs); line-height: 1.4; color: var(--text-subtle); }
+.ov-inline-sub { margin-left: var(--space-2); font-size: var(--text-xs); color: var(--text-subtle); }
+.ov-gap { margin-left: var(--space-2); color: var(--text-muted); }
+.ov-nowrap { white-space: nowrap; }
+.ov-root .truncate { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ov-root .ov-inline-sub { display: inline; }
+
+/* ---- Deltas: plain coloured text, no pill ------------------------------------ */
+.ov-delta { font-size: var(--text-xs); font-weight: 400; white-space: nowrap; line-height: 1.5; }
+.ov-delta.is-up { color: var(--primary); }
+.ov-delta.is-down { color: var(--text-muted); }
+.ov-delta:empty { display: none; }
+
+/* ---- KPI tile: label / value / [delta | sparkline] -------------------------- */
+.ov-kpi { display: flex; flex-direction: column; gap: 6px; }
+.ov-kpi__label { font-size: var(--text-sm); color: var(--text-muted); line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-kpi__value { font-size: 24px; font-weight: 500; line-height: 1.2; letter-spacing: -0.01em; color: var(--text); white-space: nowrap; }
+.ov-kpi__foot { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-3); margin-top: 4px; }
+/* The sparkline lives in its own grid cell: it can never sit on the text. */
+.ov-spark.sparkline { width: 100%; height: 20px; color: var(--chart-1); }
+.ov-spark svg { overflow: hidden; display: block; }
+.ov-root .sparkline-area, .ov-root .sparkline-dot { display: none; }
+.ov-root .sparkline-line { stroke-width: 1.25; }
+
+/* ---- Revenue card ------------------------------------------------------------- */
+.ov-revenue { display: flex; flex-direction: column; }
+.ov-total { display: flex; align-items: baseline; gap: var(--space-3); }
+.ov-total__value { font-size: 24px; font-weight: 500; line-height: 1.2; letter-spacing: -0.01em; color: var(--text); }
+.ov-facts { display: flex; flex-wrap: wrap; gap: 4px var(--space-6); margin: var(--space-2) 0 0; }
+.ov-facts > div { display: flex; gap: var(--space-2); font-size: var(--text-sm); line-height: 1.5; }
+.ov-facts dt { color: var(--text-subtle); }
+.ov-facts dd { margin: 0; color: var(--text); }
+/* Chart.js sizes the canvas from this box (responsive, maintainAspectRatio off). */
+.ov-chart { position: relative; height: 248px; margin-top: auto; padding-top: var(--space-4); }
+.ov-tabs .tab { padding: 3px 10px; font-size: var(--text-xs); font-weight: 400; }
+.ov-tabs .tab.is-active { font-weight: 500; }
+
+/* ---- Tables ------------------------------------------------------------------- */
+.ov-table-wrap { overflow-x: auto; margin: 0 calc(var(--space-5) * -1); }
+.ov-table { width: 100%; border-collapse: collapse; font-size: var(--text-base); }
+.ov-table th {
+  padding: 0 var(--space-3) var(--space-2); text-align: left; white-space: nowrap;
+  font-size: var(--text-xs); font-weight: 400; color: var(--text-subtle);
+  border-bottom: 1px solid var(--border);
+}
+.ov-table td { padding: 10px var(--space-3); border-bottom: 1px solid var(--border); vertical-align: middle; line-height: 1.4; color: var(--text); }
+.ov-table tbody tr:last-child td { border-bottom: 0; padding-bottom: 0; }
+.ov-table .r { text-align: right; }
+.ov-table-wrap .ov-table th:first-child, .ov-table-wrap .ov-table td:first-child { padding-left: var(--space-5); }
+.ov-table-wrap .ov-table th:last-child,  .ov-table-wrap .ov-table td:last-child  { padding-right: var(--space-5); }
+.ov-table-wrap tbody tr { transition: background-color var(--dur-fast) var(--ease-out-quart); }
+.ov-table-wrap tbody tr:hover { background: var(--surface-2); }
+.ov-table-wrap tbody tr:last-child td { padding-bottom: 10px; }
+.ov-table-wrap { margin-bottom: calc(var(--space-2) * -1); }
+.ov-cell-main { min-width: 0; }
+
+/* Fixed layout tables that live inside a card edge to edge: never overflow. */
+.ov-table--fit { table-layout: fixed; }
+.ov-table--fit th:first-child, .ov-table--fit td:first-child { padding-left: 0; }
+.ov-table--fit th:last-child,  .ov-table--fit td:last-child  { padding-right: 0; }
+.ov-table--fit td { overflow: hidden; text-overflow: ellipsis; }
+.ov-w-amount { width: 96px; }
+.ov-w-share  { width: 64px; }
+.ov-w-date   { width: 64px; }
+.ov-w-done   { width: 84px; }
+.ov-w-left   { width: 96px; }
+.ov-soon { color: var(--text); }
+
+/* Plan label with a small colour key matching the split bar. */
+.ov-dotlabel { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ov-dotlabel::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--c); flex: none; }
+.ov-plans .ov-sub { padding-left: 16px; }
+
+/* ---- Status: small dot + plain text ---------------------------------------------- */
+.ov-status { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; font-size: var(--text-base); color: var(--text-muted); }
+.ov-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--dot, var(--border-strong)); flex: none; }
+.ov-status--paid, .ov-status--active { --dot: var(--brand-teal); }
+.ov-status--vip, .ov-status--overdue { --dot: var(--brand-navy); }
+.ov-status--open, .ov-status--lead { --dot: var(--brand-mint); }
+.ov-status--inactive { --dot: var(--text-subtle); }
+.ov-status--overdue { color: var(--text); }
+[data-theme="dark"] .ov-status--paid, [data-theme="dark"] .ov-status--active { --dot: var(--chart-1); }
+[data-theme="dark"] .ov-status--vip, [data-theme="dark"] .ov-status--overdue { --dot: var(--chart-3); }
+
+/* ---- Plan split bar ------------------------------------------------------------------ */
+.ov-split { display: flex; gap: 2px; height: 6px; margin-top: var(--space-4); border-radius: var(--radius-full); overflow: hidden; }
+.ov-split i { flex: var(--w) 0 0; background: var(--c); transform-origin: left center; }
+.js .ov-split i { transform: scaleX(0); }
+.is-revealed .ov-split i {
+  transform: scaleX(1);
+  transition: transform var(--dur-data) var(--ease-out-expo);
+  transition-delay: calc(var(--i, 0) * 60ms + 200ms);
+}
+
+/* ---- Bar rows (channels, projects): text row, 8px, thin bar; 16px between rows ---- */
+.ov-rows { display: flex; flex-direction: column; gap: 18px; }
+.ov-barrow {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 56px; align-items: baseline;
+  column-gap: var(--space-4); row-gap: var(--space-2); line-height: 1.5;
+}
+.ov-barrow--2 { grid-template-columns: minmax(0, 1fr) 56px; }
+.ov-barrow > .num { text-align: right; white-space: nowrap; }
+.ov-barrow > .ov-bar { grid-column: 1 / -1; }
+.ov-root .ov-bar { height: 3px; margin: 0; }
+
+.ov-total-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 56px; column-gap: var(--space-4);
+  margin-top: var(--space-5); padding-top: var(--space-4); border-top: 1px solid var(--border);
+  line-height: 1.5; color: var(--text);
+}
+.ov-total-row > .num { text-align: right; white-space: nowrap; }
+
+/* ---- Activity log: time | text ---------------------------------------------------- */
+.ov-log { display: flex; flex-direction: column; }
+.ov-log li {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--space-3);
+  padding: 10px 0; border-bottom: 1px solid var(--border); line-height: 1.5; color: var(--text-muted);
+}
+.ov-log li:first-child { padding-top: 0; }
+.ov-log li:last-child { border-bottom: 0; padding-bottom: 0; }
+.ov-log time { font-size: var(--text-xs); line-height: 21px; color: var(--text-subtle); white-space: nowrap; }
+
+/* ---- Contacts list: name + company | status -------------------------------------- */
+.ov-list li, .ov-team li {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: 10px 0; border-bottom: 1px solid var(--border); line-height: 1.5;
+}
+.ov-list li:first-child, .ov-team li:first-child { padding-top: 0; }
+.ov-list li:last-child, .ov-team li:last-child { border-bottom: 0; padding-bottom: 0; }
+.ov-list__main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ---- Team workload: name + role | bar | hours ------------------------------------- */
+.ov-team li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(64px, 1fr) 72px; }
+.ov-hours { text-align: right; white-space: nowrap; font-size: var(--text-sm); }
+
+/* ==========================================================================
+   Container queries
+   ========================================================================== */
+
+/* Page container: medium (half-screen windows, wide sidebar) */
+@container ov (max-width: 1080px) {
+  .ov-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ov-grid > .ov-revenue { grid-column: span 12; order: 1; }
+  .ov-grid > :nth-child(2) { grid-column: span 6; order: 2; }  /* plans */
+  .ov-grid > :nth-child(4) { grid-column: span 6; order: 3; }  /* channels */
+  .ov-grid > :nth-child(3) { grid-column: span 12; order: 4; } /* orders */
+  .ov-grid > :nth-child(5) { grid-column: span 6; order: 5; }  /* projects */
+  .ov-grid > :nth-child(7) { grid-column: span 6; order: 6; }  /* contacts */
+  .ov-grid > :nth-child(6) { grid-column: span 12; order: 7; } /* activity */
+  .ov-grid > :nth-child(8) { order: 8; }
+  .ov-grid > :nth-child(9) { order: 9; }
+}
+@container ov (max-width: 760px) {
+  .ov-grid > .ov-card { grid-column: span 12 !important; }
+}
+@container ov (max-width: 520px) {
+  .ov-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .ov-grid { gap: var(--space-3); }
+  .ov-kpis { margin-bottom: var(--space-3); }
+  .ov-card { padding: var(--space-4); }
+  .ov-table-wrap { margin: 0 calc(var(--space-4) * -1); }
+  .ov-table-wrap .ov-table th:first-child, .ov-table-wrap .ov-table td:first-child { padding-left: var(--space-4); }
+  .ov-table-wrap .ov-table th:last-child,  .ov-table-wrap .ov-table td:last-child  { padding-right: var(--space-4); }
+  .ov-kpi__value { font-size: 20px; }
+}
+
+/* Widget containers: drop secondary columns as the card narrows. */
+@container (max-width: 740px) { .ov-orders .ov-col-id { display: none; } }
+.ov-orders .ov-name, .ov-orders .ov-sub { white-space: nowrap; }
+@container (max-width: 540px) { .ov-orders .ov-col-time { display: none; } }
+@container (max-width: 430px) { .ov-orders .ov-col-terms, .ov-orders .ov-col-plan { display: none; } }
+@container (max-width: 380px) { .ov-deadlines .ov-col-done { display: none; } }
+@container (max-width: 300px) { .ov-w-amount { width: 84px; } .ov-w-share { width: 56px; } }
+@container (max-width: 360px) {
+  .ov-team li { grid-template-columns: minmax(0, 1fr) 72px; row-gap: var(--space-2); }
+  .ov-team li > .ov-bar { grid-column: 1 / -1; grid-row: 2; }
+  .ov-team li > .ov-hours { grid-column: 2; grid-row: 1; }
+}
+/* KPI tile narrower than ~150px: sparkline drops under the delta. */
+@container (max-width: 150px) {
+  .ov-kpi__foot { grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
+}

@@ -1,0 +1,300 @@
+/* ==========================================================================
+   PROJECTS PAGE  (templates/dashboard/projects.html + js/pages/projects.js)
+   Kanban board with pointer drag & drop, list view, detail drawer with a
+   budget ring and a milestone checklist.
+   ========================================================================== */
+
+/* ---- View toggle (Board / List) ----------------------------------------- */
+/* Actions stay right-aligned when the toolbar wraps (half-screen windows). */
+.pj-toolbar-actions { margin-left: auto; }
+.pj-view-toggle .tab { display: inline-flex; align-items: center; gap: 6px; }
+.pj-view-toggle .tab .icon { width: 14px; height: 14px; }
+
+/* ---- Board ----------------------------------------------------------------
+   The wrapper is a size container, so the board reacts to the space it really
+   has (sidebar expanded / collapsed / resized), not to the viewport.
+   Wide enough: five equal columns that fit. Narrower: fixed-width columns that
+   scroll sideways INSIDE the board, with edge fades + a thin scrollbar as the
+   "there is more" affordance (classes set by projects.js).                   */
+.pj-board-wrap { position: relative; container: pjboard / inline-size; }
+.pj-board {
+  --gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--gap);
+  align-items: stretch;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+  padding-bottom: var(--space-2);
+}
+.pj-board::-webkit-scrollbar { height: 8px; }
+.pj-board::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: var(--radius-full); }
+.pj-board::-webkit-scrollbar-track { background: transparent; }
+@container pjboard (max-width: 1019px) {
+  .pj-board { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 240px; padding-bottom: var(--space-3); }
+}
+@container pjboard (max-width: 480px) {
+  .pj-board { grid-auto-columns: 84%; }
+}
+/* Edge fades (a mask, so it works on any background and in both themes). */
+.pj-board-wrap.can-right .pj-board { -webkit-mask-image: linear-gradient(to left, transparent, #000 48px); mask-image: linear-gradient(to left, transparent, #000 48px); }
+.pj-board-wrap.can-left .pj-board { -webkit-mask-image: linear-gradient(to right, transparent, #000 48px); mask-image: linear-gradient(to right, transparent, #000 48px); }
+.pj-board-wrap.can-left.can-right .pj-board {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+}
+
+.pj-column {
+  position: relative;
+  display: flex; flex-direction: column;
+  min-width: 0; min-height: 240px; padding: 12px;
+  border-radius: var(--radius-lg);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  scroll-snap-align: start;
+  transition: background-color var(--dur-fast) var(--ease-out-quart), border-color var(--dur-fast) var(--ease-out-quart);
+}
+/* Drop target: a quiet tint + stronger hairline. */
+.pj-column.is-over { background: var(--surface-3); border-color: var(--border-strong); }
+.pj-column__head { display: flex; align-items: center; gap: 10px; min-height: 28px; padding: 0 2px 12px 4px; line-height: 1.5; }
+.pj-column__title { font-size: var(--text-base); font-weight: 500; color: var(--text); }
+.pj-column__count { font-size: var(--text-base); font-weight: 400; color: var(--text-subtle); }
+.pj-column__add { margin-left: auto; opacity: 0; transition: opacity var(--dur-fast), background-color var(--dur-fast), color var(--dur-fast); }
+.pj-column:hover .pj-column__add, .pj-column__add:focus-visible { opacity: 1; }
+@media (hover: none) { .pj-column__add { opacity: 1; } }
+
+.pj-column__list { display: flex; flex-direction: column; gap: 10px; min-height: 8px; }
+
+/* Empty hint: only shown when the column has no visible cards. */
+.pj-column__empty {
+  display: none; align-items: center; justify-content: center;
+  min-height: 112px;
+  border: 1px dashed var(--border-strong); border-radius: var(--radius-md);
+  font-size: var(--text-base); color: var(--text-subtle);
+}
+.pj-column.is-empty .pj-column__empty { display: flex; animation: nimbus-fade-in var(--dur-base) var(--ease-out-quart); }
+.pj-column.is-empty.is-over .pj-column__empty { display: none; }
+
+/* ---- Card ------------------------------------------------------------------
+   name (500) / client / progress / due + budget. Regular weight everywhere
+   else; urgency only changes the grey tone.                                  */
+.pj-card {
+  --c: var(--primary);
+  position: relative;
+  display: flex; flex-direction: column;
+  padding: 16px;
+  line-height: 1.5;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-xs);
+  cursor: grab;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+  touch-action: manipulation;
+  transition: border-color var(--dur-fast) var(--ease-out-quart);
+}
+/* Lift shadow lives on a pseudo-element so only its opacity animates. */
+.pj-card::after {
+  content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none;
+  box-shadow: var(--shadow-md); opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease-out-quart);
+}
+.pj-card:hover { border-color: var(--border-strong); }
+.pj-card:hover::after { opacity: 0.6; }
+.pj-card:focus-visible { outline: none; box-shadow: var(--ring), var(--shadow-xs); }
+.pj-card.is-placed { animation: none; }   /* moved cards don't replay the stagger reveal */
+
+.pj-card__name { display: block; font-size: var(--text-base); font-weight: 500; color: var(--text); overflow-wrap: anywhere; }
+.pj-card__client { display: block; margin-top: 2px; font-size: var(--text-base); color: var(--text-subtle); }
+.pj-card__progress { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-top: 16px; }
+.pj-card__progress .num { font-size: var(--text-base); font-weight: 400; color: var(--text-muted); min-width: 48px; text-align: right; }
+.pj-card__foot { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); min-width: 0; }
+.pj-card__budget { flex: none; font-size: var(--text-base); font-weight: 400; color: var(--text-muted); }
+.pj-card__foot .pj-meta { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.pj-card .progress-bar, .pj-drag-layer .progress-bar { background: var(--c, var(--primary)); }
+
+/* Due state: plain text, one weight; only the grey tone changes. */
+.pj-meta { font-size: var(--text-base); font-weight: 400; color: var(--text-muted); white-space: nowrap; }
+.pj-meta--warn, .pj-meta--late { color: var(--text); }
+.pj-meta--done { color: var(--text-subtle); }
+
+.pj-more { font-size: var(--text-base); }
+/* Restrained palette: people and project icons are neutral grey, the accent is reserved for progress/state. */
+.pj-table .avatar, .pj-drawer .avatar { --c: var(--text-muted); }
+.pj-table .project-swatch, .pj-drawer__swatch { --c: var(--text-muted); }
+.pj-table tbody tr { --c: var(--primary); }
+.pj-drawer { --c: var(--primary); }
+
+/* Freshly created card: border briefly takes the accent, then settles. */
+.pj-card.is-new { border-color: var(--primary); transition: border-color var(--dur-data) var(--ease-out-quart); }
+
+/* ---- Drag & drop ------------------------------------------------------------
+   The lifted card lives in a fixed layer and is positioned only with
+   `translate` (set from JS, 1:1 with the pointer, no transition). The lift
+   is just a shadow fading in: precise and understated, no scale or tilt.     */
+.pj-drag-layer { position: fixed; inset: 0; z-index: 120; pointer-events: none; }
+.pj-card.is-dragging {
+  position: absolute; left: 0; top: 0; margin: 0;
+  pointer-events: none;
+  cursor: grabbing;
+  will-change: translate;
+  transition: border-color var(--dur-fast);
+}
+.pj-card.is-dragging::after { box-shadow: var(--shadow-lg); }
+.pj-card.is-lifted { border-color: var(--border-strong); }
+.pj-card.is-lifted::after { opacity: 1; }
+.pj-card.is-settling::after { opacity: 0; transition-duration: var(--settle, var(--dur-base)); }
+html.pj-is-dragging .pj-column .pj-card:hover { border-color: var(--border); }
+html.pj-is-dragging .pj-column .pj-card:hover::after { opacity: 0; }
+html.pj-is-dragging .pj-board { scroll-snap-type: none; }   /* snap would undo edge auto-scroll */
+html.pj-is-dragging, html.pj-is-dragging * { cursor: grabbing !important; user-select: none !important; }
+
+/* The gap the card will drop into: a faint well, no dashed outline. */
+.pj-placeholder {
+  flex: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.pj-column.is-over .pj-placeholder { background: var(--surface-2); }
+
+/* ---- List view ------------------------------------------------------------- */
+.pj-table-card { padding-top: var(--space-2); padding-bottom: var(--space-2); }
+.pj-table tbody tr { cursor: pointer; }
+.pj-table td:first-child { min-width: 240px; }
+.pj-table .project-swatch { width: 34px; height: 34px; }
+.pj-row-progress { display: grid; grid-template-columns: minmax(90px, 140px) auto; align-items: center; gap: 10px; }
+.pj-row-progress .num { font-size: var(--text-base); font-weight: 400; color: var(--text-muted); }
+.pj-table .badge { transition: color var(--dur-base), background-color var(--dur-base); }
+.pj-budget-cell { white-space: nowrap; }
+.pj-budget-cell small { display: block; font-size: var(--text-base); color: var(--text-subtle); }
+.pj-no-results .empty-state { padding: var(--space-10) var(--space-6); }
+
+/* ---- Detail drawer ----------------------------------------------------- */
+/* Width animates only while the full-screen toggle runs (.is-toggling), never on window resize. */
+.pj-drawer { width: min(500px, 100vw); }
+.pj-drawer.is-toggling { transition: width var(--dur-slow) var(--ease-out-quart); }
+/* Full-screen detail: the drawer takes the whole viewport, content stays at a readable width. */
+.pj-drawer.is-wide { width: 100vw; }
+.pj-drawer.is-wide .modal-panel { border-radius: 0; }
+.pj-drawer.is-wide .pj-drawer__body > * { width: 100%; max-width: 760px; margin-inline: auto; }
+.pj-drawer.is-wide .pj-status-switch { width: auto; margin-inline: max(0px, calc((100% - 760px) / 2)); }
+.pj-drawer .st-expand .ico-min, .pj-drawer.is-wide .st-expand .ico-max { display: none; }
+.pj-drawer.is-wide .st-expand .ico-min { display: inline; }
+.pj-drawer__header { padding-bottom: var(--space-4); border-bottom: 1px solid var(--border); }
+.pj-drawer__header h2 { font-size: var(--text-base); }
+.pj-drawer__swatch { width: 42px; height: 42px; border-radius: var(--radius-md); }
+.pj-drawer__body { display: flex; flex-direction: column; gap: var(--space-5); }
+.pj-drawer__body > * { flex-shrink: 0; }   /* the body scrolls; children must not squash */
+.pj-status-switch { max-width: 100%; overflow-x: auto; align-self: flex-start; scrollbar-width: none; }
+.pj-status-switch .tab { font-size: var(--text-base); padding: 5px 10px; }
+.pj-drawer__desc { line-height: 1.6; margin-top: calc(var(--space-1) * -1); }
+.pj-drawer__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+@media (max-width: 480px) { .pj-drawer__grid { grid-template-columns: 1fr; } }
+.pj-ring-card, .pj-progress-card {
+  padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface-2);
+}
+.pj-ring-card { display: flex; align-items: center; gap: var(--space-3); }
+.pj-progress-card { display: flex; flex-direction: column; justify-content: space-between; gap: 10px; }
+.pj-big { font-size: var(--text-base); font-weight: 500; letter-spacing: -0.03em; line-height: 1.15; }
+
+/* Budget ring: stroke-dashoffset transition (pathLength=100, so --pct maps directly). */
+.pj-ring { --pct: 0; position: relative; width: 78px; height: 78px; flex: none; }
+.pj-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.pj-ring circle { fill: none; stroke-width: 8; }
+.pj-ring__track { stroke: var(--surface-3); }
+.pj-ring__value {
+  stroke: var(--c, var(--primary)); stroke-linecap: round;
+  stroke-dasharray: 100 100; stroke-dashoffset: calc(100 - var(--pct));
+  transition: stroke-dashoffset var(--dur-data) var(--ease-out-expo), stroke var(--dur-base);
+}
+.pj-ring.is-warn .pj-ring__value { stroke: var(--text); }
+.pj-ring.no-anim .pj-ring__value { transition: none; }
+.pj-ring__center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.1; }
+.pj-ring__center strong { font-size: var(--text-base); font-weight: 500; letter-spacing: -0.02em; }
+.pj-ring__center span { font-size: var(--text-base); color: var(--text-subtle); }
+
+.pj-section-title { display: flex; align-items: center; gap: var(--space-2); margin-bottom: calc(var(--space-3) * -1); }
+.pj-section-title h3 { font-size: var(--text-base); font-weight: 500; }
+
+/* Milestone checklist: a plain, quick state change (fill + muted label). */
+.pj-milestones { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pj-ms {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 10px; margin: 0 -10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color var(--dur-fast);
+}
+.pj-ms:hover { background: var(--surface-2); }
+.pj-ms input { position: absolute; opacity: 0; pointer-events: none; }
+.pj-check {
+  width: 18px; height: 18px; flex: none; display: grid; place-items: center;
+  border-radius: var(--radius-xs); border: 1.5px solid var(--border-strong); background: var(--surface);
+  color: var(--primary-contrast);
+  transition: background-color var(--dur-fast), border-color var(--dur-fast);
+}
+.pj-check svg { width: 12px; height: 12px; opacity: 0; transition: opacity var(--dur-fast); }
+.pj-ms input:checked + .pj-check { background: var(--primary); border-color: var(--primary); }
+.pj-ms input:checked + .pj-check svg { opacity: 1; }
+.pj-ms input:focus-visible + .pj-check { box-shadow: var(--ring); }
+.pj-ms__name { flex: 1; min-width: 0; font-size: var(--text-base); font-weight: 400; transition: color var(--dur-fast); }
+.pj-ms input:checked ~ .pj-ms__name { color: var(--text-subtle); }
+.pj-ms__due { font-size: var(--text-base); color: var(--text-subtle); white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .pj-view-toggle .tab span { display: none; }
+}
+
+/* ---- One type size ----------------------------------------------------------
+   Everything on this page is 14px (var(--text-base)); hierarchy comes from
+   weight and grey tone. Only key numbers use the one larger size (22px).   */
+body.page-projects :is(.page, dialog) :is(.card-title, .card-subtitle, .list-item__title, .list-item__meta, .chip, .chip .count,
+  .tab, .btn, .badge, .label, .hint, .input, .select, .textarea, .table, .table th, .table td, .text-sm, .text-xs, .kbd,
+  .modal-header h2, .modal-header p, .empty-state h3, .empty-state p) { font-size: var(--text-base); }
+body.page-projects :is(.page, dialog) .table th { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--text-subtle); }
+body.page-projects :is(.page, dialog) .card-title, body.page-projects :is(.page, dialog) .modal-header h2 { font-weight: 500; letter-spacing: 0; }
+/* Flat progress fill (no gradient). */
+body.page-projects :is(.page, dialog) .progress-bar { background: var(--c, var(--primary)); }
+.num-lg { font-size: 22px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
+.plain-empty { padding: var(--space-10) var(--space-6); text-align: center; color: var(--text-subtle); }
+.plain-empty strong { display: block; color: var(--text); font-weight: 500; }
+
+/* ---- Summary strip (one card, four figures, hairline dividers) ------------ */
+.pj-stats-wrap { container: pjstats / inline-size; }
+.pj-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0; }
+.pj-stat { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: var(--space-5) var(--space-6); line-height: 1.5; }
+.pj-stat__label { font-size: var(--text-base); color: var(--text-muted); }
+.pj-stat + .pj-stat { border-left: 1px solid var(--border); }
+@container pjstats (max-width: 720px) {
+  .pj-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pj-stat:nth-child(3) { border-left: 0; }
+  .pj-stat:nth-child(n+3) { border-top: 1px solid var(--border); }
+  .pj-stat { padding: var(--space-4) var(--space-5); }
+}
+.pj-stats-wrap + .section { margin-top: var(--space-5); }
+.pj-status { display: inline-flex; align-items: center; gap: 8px; color: var(--text-muted); white-space: nowrap; transition: color var(--dur-base); }
+.pj-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--text-subtle); transition: background-color var(--dur-base); }
+.pj-status--active::before { background: var(--primary); }
+.pj-status--review::before { background: var(--text); }
+.pj-status--done { color: var(--text-subtle); }
+.pj-status--done::before { background: transparent; box-shadow: inset 0 0 0 1.5px var(--text-subtle); }
+.pj-table .avatar-stack .avatar { font-size: 11px; }
+
+/* Column headers: status dot + label in the normal text colour. */
+.pj-column__head .pj-column__title { color: var(--text); gap: 8px; }
+.pj-list-due { color: var(--text-muted); }
+.pj-ring-meta { display: flex; justify-content: space-between; gap: 12px; color: var(--text-subtle); line-height: 1.5; }
+.pj-ring-meta .num { color: var(--text-muted); }
+.pj-due-line { line-height: 1.5; white-space: pre-line; }
+.pj-ring { width: 84px; height: 84px; }
+
+/* List view reflows by the card's own width: drop the least important
+   columns instead of clipping (Team, then Progress, then Due). */
+.pj-table-card { container: pjtable / inline-size; }
+@container pjtable (max-width: 820px) { .pj-table :is(th, td):nth-child(6) { display: none; } }
+@container pjtable (max-width: 640px) { .pj-table :is(th, td):nth-child(3) { display: none; } .pj-table td:first-child { min-width: 140px; } .pj-table :is(th, td) { padding-inline: var(--space-4); } }
+@container pjtable (max-width: 460px) { .pj-table :is(th, td):is(:nth-child(2), :nth-child(4)) { display: none; } .pj-table td:first-child { min-width: 0; } }

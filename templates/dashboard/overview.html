@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% load static nimbus humanize %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/pages/overview.css' %}">{% endblock %}
+
+{% block content %}
+{% url 'projects' as projects_url %}{% url 'contacts' as contacts_url %}{% url 'analytics' as analytics_url %}
+{# .ov-root is the size container: every widget below responds to the space   #}
+{# the page actually has (sidebar expanded / collapsed / resized), not the     #}
+{# viewport. Own 12-column grid (.ov-grid + .ov-cN) so shared CSS can't break it. #}
+<div class="ov-root">
+
+<div class="ov-toolbar" data-animate="fade-in">
+  <p class="ov-period">Last 30 days</p>
+  <div class="ov-actions">
+    <button class="btn btn--sm" type="button" data-export>Export CSV</button>
+    <button class="btn btn--sm btn--primary" type="button" data-open-modal="new-project-modal">New project</button>
+  </div>
+</div>
+
+{# ---- KPI strip: label / value / delta + sparkline in separate cells ------- #}
+{% if kpis %}
+<section class="ov-kpis" data-stagger aria-label="Key metrics, last 30 days">
+  {% for k in kpis %}
+    <article class="card ov-card ov-kpi">
+      <div class="ov-kpi__label">{{ k.label }}</div>
+      <div class="ov-kpi__value num" data-countup="{{ k.value }}" data-prefix="{{ k.prefix }}" data-suffix="{{ k.suffix }}" data-decimals="{{ k.decimals }}">{{ k.prefix }}{{ k.value|floatformat:k.decimals|intcomma }}{{ k.suffix }}</div>
+      <div class="ov-kpi__foot">
+        <span class="ov-delta num {% if k.change >= 0 %}is-up{% else %}is-down{% endif %}">{% if k.change >= 0 %}+{% else %}&minus;{% endif %}{{ k.change|abs_value|floatformat:1 }}{{ k.unit }}</span>
+        <div class="sparkline ov-spark" data-sparkline="{{ k.spark|join:',' }}" aria-hidden="true"></div>
+      </div>
+    </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+<div class="ov-grid" data-stagger>
+
+  {# ---- Revenue chart ---------------------------------------------------- #}
+  <section class="card ov-card ov-c8 ov-revenue" aria-labelledby="revenue-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="revenue-title">Net revenue</h2>
+      <div class="tabs tabs--pill ov-tabs" data-tabs data-revenue-range role="tablist" aria-label="Revenue range">
+        <button class="tab" type="button" data-tab="7">7D</button>
+        <button class="tab is-active" type="button" data-tab="30">30D</button>
+        <button class="tab" type="button" data-tab="90">90D</button>
+        <button class="tab" type="button" data-tab="365">12M</button>
+      </div>
+    </header>
+    <div class="ov-total">
+      <span class="ov-total__value num" data-sum="revenue" data-prefix="$">$0</span>
+      <span class="ov-delta num is-up" data-sum="change"></span>
+    </div>
+    <dl class="ov-facts">
+      <div><dt>Payments</dt><dd class="num" data-sum="orders">0</dd></div>
+      <div><dt>Avg payment</dt><dd class="num" data-sum="aov" data-prefix="$" data-decimals="2">$0.00</dd></div>
+      <div><dt>Best day</dt><dd class="num" data-sum="best" data-prefix="$">$0</dd></div>
+    </dl>
+    <div class="ov-chart"><canvas id="revenue-chart" aria-label="Revenue over the selected range" role="img"></canvas></div>
+  </section>
+
+  {# ---- Revenue by plan: plan | revenue | share --------------------------- #}
+  <section class="card ov-card ov-c4" aria-labelledby="plans-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="plans-title">Revenue by plan</h2>
+      <span class="ov-meta" data-range-label>Last 30 days</span>
+    </header>
+    <table class="ov-table ov-table--fit ov-plans">
+      <thead><tr><th>Plan</th><th class="r ov-w-amount">Revenue</th><th class="r ov-w-share">Share</th></tr></thead>
+      <tbody>
+        {% for p in plans %}
+          <tr data-share="{{ p.share }}">
+            <td><span class="ov-dotlabel" style="--c: var(--chart-{{ forloop.counter }})">{{ p.label }}</span><span class="ov-sub">${{ p.price }} per seat / month</span></td>
+            <td class="r num" data-cell="amount" data-prefix="$">${{ p.amount|intcomma }}</td>
+            <td class="r num text-muted">{{ p.share|floatformat:1 }}%</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="ov-split" aria-hidden="true">
+      {% for p in plans %}<i style="--w: {{ p.share|stringformat:'.1f' }}; --c: var(--chart-{{ forloop.counter }}); --i: {{ forloop.counter0 }}"></i>{% endfor %}
+    </div>
+  </section>
+
+  {# ---- Recent invoices --------------------------------------------------- #}
+  <section class="card ov-card ov-c8" aria-labelledby="invoices-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="invoices-title">Recent invoices</h2>
+      <a class="ov-link" href="{{ analytics_url }}">View all</a>
+    </header>
+    <div class="ov-table-wrap">
+      <table class="ov-table ov-orders">
+        <thead><tr><th class="ov-col-id">Invoice</th><th>Account</th><th class="ov-col-plan">Plan</th><th class="ov-col-time">Issued</th><th class="ov-col-terms">Terms</th><th>Status</th><th class="r">Amount</th></tr></thead>
+        <tbody>
+          {% for o in invoices %}
+            <tr>
+              <td class="num text-muted ov-col-id ov-nowrap">{{ o.number }}</td>
+              <td class="ov-cell-main"><span class="ov-name">{{ o.account }}</span><span class="ov-sub">{{ o.contact }}</span></td>
+              <td class="ov-col-plan">{{ o.plan }}</td>
+              <td class="text-muted ov-nowrap ov-col-time num">{{ o.issued|date:"M j" }}</td>
+              <td class="text-muted ov-nowrap ov-col-terms">{{ o.terms }}</td>
+              <td><span class="ov-status ov-status--{{ o.status }}">{{ o.status_label }}</span></td>
+              <td class="r num ov-nowrap">{{ o.amount|money }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  {# ---- Revenue by channel: label | revenue | share, bar underneath ------- #}
+  <section class="card ov-card ov-c4" aria-labelledby="channels-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="channels-title">Revenue by channel</h2>
+      <span class="ov-meta" data-range-label>Last 30 days</span>
+    </header>
+    <ul class="ov-rows">
+      {% for c in channels %}
+        <li class="ov-barrow" data-share="{{ c.share }}">
+          <span class="truncate">{{ c.label }}</span>
+          <span class="num" data-cell="amount" data-prefix="$">${{ c.amount|intcomma }}</span>
+          <span class="num text-muted ov-pct">{{ c.share|floatformat:1 }}%</span>
+          <div class="progress ov-bar" data-progress="{{ c.share }}" style="--c: var(--chart-1)"><div class="progress-bar"></div></div>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="ov-total-row">
+      <span>Total</span>
+      <span class="num" data-cell="channels-total" data-prefix="$">${{ channels_total|intcomma }}</span>
+      <span class="num text-muted ov-pct">100.0%</span>
+    </div>
+  </section>
+
+  {# ---- Top projects ------------------------------------------------------ #}
+  <section class="card ov-card ov-c4" aria-labelledby="projects-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="projects-title">Top projects</h2>
+      <a class="ov-link" href="{{ projects_url }}">View all</a>
+    </header>
+    <ul class="ov-rows">
+      {% for p in top_projects %}
+        <li class="ov-barrow ov-barrow--2">
+          <span class="truncate" title="{{ p.name }} for {{ p.client }}">{{ p.name }}<span class="ov-inline-sub">{{ p.client }}</span></span>
+          <span class="num text-muted ov-pct">{{ p.progress|floatformat:1 }}%</span>
+          <div class="progress ov-bar" data-progress="{{ p.progress }}" style="--c: var(--chart-1)"><div class="progress-bar"></div></div>
+        </li>
+      {% empty %}
+        <li class="text-subtle">No active projects.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {# ---- Recent activity: time | text ------------------------------------- #}
+  <section class="card ov-card ov-c4" aria-labelledby="activity-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="activity-title">Recent activity</h2>
+    </header>
+    <ol class="ov-log">
+      {% for a in activities %}
+        <li>
+          <time class="num" datetime="{{ a.iso }}">{{ a.time }}</time>
+          <span><span class="ov-name">{{ a.actor }}</span> {{ a.verb }} {{ a.target }}{% if a.amount %}<span class="num ov-gap">{{ a.amount|money }}</span>{% endif %}</span>
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {# ---- New contacts: name + company | status ----------------------------- #}
+  <section class="card ov-card ov-c4" aria-labelledby="contacts-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="contacts-title">New contacts</h2>
+      <a class="ov-link" href="{{ contacts_url }}">View all</a>
+    </header>
+    <ul class="ov-list">
+      {% for c in recent_contacts %}
+        <li>
+          <span class="ov-list__main"><span class="ov-name truncate">{{ c.name }}</span><span class="ov-sub truncate">{{ c.company }}</span></span>
+          <span class="ov-status ov-status--{{ c.status }}">{{ c.status_label }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  {# ---- Upcoming deadlines ------------------------------------------------ #}
+  <section class="card ov-card ov-c6" aria-labelledby="deadlines-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="deadlines-title">Upcoming deadlines</h2>
+      <a class="ov-link" href="{{ projects_url }}">View all</a>
+    </header>
+    <table class="ov-table ov-table--fit ov-deadlines">
+      <thead><tr><th class="ov-w-date">Due</th><th>Project</th><th class="r ov-col-done ov-w-done">Progress</th><th class="r ov-w-left">Due in</th></tr></thead>
+      <tbody>
+        {% for d in deadlines %}
+          <tr>
+            <td class="num ov-nowrap text-muted">{{ d.due|date:"M j" }}</td>
+            <td class="ov-cell-main"><span class="ov-name truncate">{{ d.name }}</span><span class="ov-sub truncate">{{ d.client }}</span></td>
+            <td class="r num text-muted ov-col-done">{{ d.progress|floatformat:1 }}%</td>
+            <td class="r ov-nowrap {% if d.soon %}ov-soon{% else %}text-muted{% endif %}">{{ d.when }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-subtle">Nothing due.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  {# ---- Team workload: name + role | bar | hours ------------------------- #}
+  <section class="card ov-card ov-c6" aria-labelledby="team-title">
+    <header class="ov-head">
+      <h2 class="ov-title" id="team-title">Team workload</h2>
+      <span class="ov-meta">This week</span>
+    </header>
+    <ul class="ov-team">
+      {% for m in workload %}
+        <li>
+          <span class="ov-list__main"><span class="ov-name truncate">{{ m.name }}</span><span class="ov-sub truncate">{{ m.role }}</span></span>
+          <div class="progress ov-bar" data-progress="{{ m.load }}" style="--c: var(--chart-1)"><div class="progress-bar"></div></div>
+          <span class="num text-muted ov-hours">{{ m.booked }} / {{ m.capacity }} h</span>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+</div>
+</div>
+
+{{ revenue_series|json_script:"revenue-data" }}
+{% endblock %}
+
+{% block modals %}
+<dialog class="modal" id="new-project-modal" aria-labelledby="new-project-title">
+  <form class="modal-panel" method="dialog" data-new-project-form>
+    <div class="modal-header">
+      <div>
+        <h2 id="new-project-title">New project</h2>
+      </div>
+      <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field span-2">
+          <label class="label" for="np-name">Project name</label>
+          <input class="input" id="np-name" name="name" placeholder="e.g. Billing migration" autofocus>
+        </div>
+        <div class="field">
+          <label class="label" for="np-client">Client</label>
+          <input class="input" id="np-client" name="client" placeholder="Client company">
+        </div>
+        <div class="field">
+          <label class="label" for="np-due">Due date</label>
+          <input class="input" id="np-due" name="due" type="date">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--ghost" type="button" data-close-modal>Cancel</button>
+      <button class="btn btn--primary" type="submit">Create project</button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/overview.js' %}" defer></script>
+{% endblock %}

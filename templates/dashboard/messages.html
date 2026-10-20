@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load static nimbus %}
+
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/pages/messages.css' %}">{% endblock %}
+
+{% block content %}
+{# ---- Toolbar ---------------------------------------------------------------- #}
+<div class="page-toolbar" data-animate="fade-in">
+  <div class="row wrap">
+    <span class="text-subtle">Synced <span class="text-muted" data-synced>just now</span></span>
+    <button class="icon-btn" type="button" data-refresh aria-label="Check for new mail" data-tooltip="Check for new mail" data-tooltip-pos="bottom">{% icon "refresh" %}</button>
+  </div>
+  <div class="row">
+    <button class="btn" type="button" data-mark-all aria-label="Mark all read">{% icon "check-circle" %}<span>Mark all read</span></button>
+    <button class="btn btn--primary" type="button" data-open-modal="compose-modal" aria-label="Compose">{% icon "edit" %}<span>Compose</span></button>
+  </div>
+</div>
+
+{# ---- Inbox: folders | list | reading pane ---------------------------------- #}
+<div class="inbox-shell" data-animate="fade-up">
+<div class="inbox card card--flush" data-inbox>
+  <aside class="inbox-folders" aria-label="Mail folders">
+    <nav class="inbox-nav" data-folders>
+      <span class="inbox-nav__indicator" aria-hidden="true"></span>
+      <div class="inbox-nav__title">Mailbox</div>
+      <button class="inbox-nav__item is-active" type="button" data-folder="inbox" aria-current="true"><span class="inbox-nav__label">Inbox</span><span class="inbox-count" data-count="inbox"></span></button>
+      <button class="inbox-nav__item" type="button" data-folder="starred"><span class="inbox-nav__label">Starred</span><span class="inbox-count inbox-count--muted" data-count="starred"></span></button>
+      <button class="inbox-nav__item" type="button" data-folder="archive"><span class="inbox-nav__label">Archive</span><span class="inbox-count inbox-count--muted" data-count="archive"></span></button>
+      <button class="inbox-nav__item" type="button" data-folder="trash"><span class="inbox-nav__label">Trash</span><span class="inbox-count inbox-count--muted" data-count="trash"></span></button>
+      <div class="inbox-nav__title">Labels</div>
+      {% for value, label in label_choices %}{% if value != "inbox" %}
+      <button class="inbox-nav__item" type="button" data-folder="label:{{ value }}"><span class="inbox-nav__label">{{ label }}</span><span class="inbox-count" data-count="label:{{ value }}"></span></button>
+      {% endif %}{% endfor %}
+    </nav>
+    <div class="inbox-storage">
+      <div class="row-between"><span class="text-muted">Storage</span><span class="text-subtle num">3.8 / 15 GB</span></div>
+      <div class="progress progress--sm" data-progress="25"><div class="progress-bar"></div></div>
+    </div>
+  </aside>
+
+  <section class="inbox-list" aria-label="Messages">
+    <div class="inbox-list__head">
+      <div class="inbox-list__bar">
+      <select class="select inbox-folder-select" data-folder-select data-xs-class="inbox-folder-picker" aria-label="Folder">
+        <option value="inbox">Inbox</option><option value="starred">Starred</option><option value="archive">Archive</option><option value="trash">Trash</option>
+        {% for value, label in label_choices %}{% if value != "inbox" %}<option value="label:{{ value }}">{{ label }}</option>{% endif %}{% endfor %}
+      </select>
+      <div class="inbox-search">
+        {% icon "search" "icon--sm" %}
+        <input class="input" type="search" placeholder="Search mail" aria-label="Search messages" data-search autocomplete="off">
+      </div>
+      </div>
+      <div class="tabs inbox-tabs" data-tabs data-inbox-tabs>
+        <button class="tab is-active" type="button" data-tab="all">All</button>
+        <button class="tab" type="button" data-tab="unread">Unread <span class="inbox-tab-count num" data-count="tab-unread"></span></button>
+        <button class="tab" type="button" data-tab="starred">Starred</button>
+      </div>
+    </div>
+    <div class="inbox-items" data-items data-stagger data-stagger-delay="30" role="list"></div>
+    <div class="inbox-empty plain-empty" data-empty hidden><strong>No messages</strong>No messages match this view.</div>
+  </section>
+
+  <section class="inbox-read" data-reader aria-label="Reading pane" aria-live="polite">
+    <div class="read-toolbar">
+      <button class="icon-btn icon-btn--sm read-back" type="button" data-back aria-label="Back to list">{% icon "chevron-left" %}</button>
+      <div class="row" style="--gap: 2px">
+        <button class="icon-btn icon-btn--sm" type="button" data-read-act="archive" aria-label="Archive" data-tooltip="Archive  E" data-tooltip-pos="bottom">{% icon "archive" %}</button>
+        <button class="icon-btn icon-btn--sm" type="button" data-read-act="delete" aria-label="Delete" data-tooltip="Delete  #" data-tooltip-pos="bottom">{% icon "trash" %}</button>
+        <button class="icon-btn icon-btn--sm" type="button" data-read-act="unread" aria-label="Mark as unread" data-tooltip="Mark as unread  U" data-tooltip-pos="bottom">{% icon "mail" %}</button>
+        <button class="icon-btn icon-btn--sm msg-star" type="button" data-read-act="star" aria-label="Star" aria-pressed="false" data-tooltip="Star  S" data-tooltip-pos="bottom">{% icon "star" %}</button>
+      </div>
+      <div class="row read-nav" style="--gap: 2px">
+        <span class="text-xs text-subtle num" data-position></span>
+        <button class="icon-btn icon-btn--sm" type="button" data-step="-1" aria-label="Previous message" data-tooltip="Previous  K" data-tooltip-pos="bottom">{% icon "chevron-up" %}</button>
+        <button class="icon-btn icon-btn--sm" type="button" data-step="1" aria-label="Next message" data-tooltip="Next  J" data-tooltip-pos="bottom">{% icon "chevron-down" %}</button>
+        <button class="icon-btn icon-btn--sm read-expand" type="button" data-expand aria-pressed="false" aria-label="Toggle full screen" data-tooltip="Full screen  F" data-tooltip-pos="bottom"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g class="ico-max"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/></g><g class="ico-min"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/></g></svg></button>
+      </div>
+    </div>
+    <div class="read-scroll" data-read-scroll>
+      <div class="read-content" data-read-content>
+        <div class="plain-empty"><strong>No message selected</strong>Select a message from the list.</div>
+      </div>
+    </div>
+  </section>
+</div>
+</div>
+
+{# Icons cloned by the page script into JS-rendered markup. #}
+<template id="msg-icons">
+  <i data-i="star">{% icon "star" "icon--sm" %}</i>
+  <i data-i="archive">{% icon "archive" "icon--sm" %}</i>
+  <i data-i="trash">{% icon "trash" "icon--sm" %}</i>
+  <i data-i="paperclip">{% icon "paperclip" "icon--sm" %}</i>
+  <i data-i="file">{% icon "file" %}</i>
+  <i data-i="download">{% icon "download" "icon--sm" %}</i>
+  <i data-i="reply">{% icon "reply" "icon--sm" %}</i>
+  <i data-i="send">{% icon "send" "icon--sm" %}</i>
+  <i data-i="mail">{% icon "mail" %}</i>
+</template>
+
+{{ messages_data|json_script:"messages-data" }}
+{{ label_choices|json_script:"message-labels" }}
+{% endblock %}
+
+{% block modals %}
+<dialog class="modal" id="compose-modal" aria-labelledby="compose-title">
+  <form class="modal-panel" method="dialog" data-compose-form>
+    <div class="modal-header">
+      <div>
+        <h2 id="compose-title">New message</h2>
+        <p>Demo workspace: messages are not delivered.</p>
+      </div>
+      <button class="icon-btn icon-btn--sm" type="button" data-close-modal aria-label="Close">{% icon "x" %}</button>
+    </div>
+    <div class="modal-body">
+      <div class="stack" style="--gap: 14px">
+        <div class="field">
+          <label class="label" for="compose-to">To</label>
+          <input class="input" id="compose-to" name="to" type="email" list="compose-people" placeholder="name@company.example" autofocus autocomplete="off">
+          <datalist id="compose-people">{% for m in team %}<option value="{{ m.email }}">{{ m.name }}</option>{% endfor %}</datalist>
+        </div>
+        <div class="field">
+          <label class="label" for="compose-subject">Subject</label>
+          <input class="input" id="compose-subject" name="subject" placeholder="Subject" autocomplete="off">
+        </div>
+        <div class="field">
+          <div class="row-between"><label class="label" for="compose-body">Message</label><span class="hint num" data-compose-count>0 / 1000</span></div>
+          <textarea class="textarea" id="compose-body" name="body" rows="6" maxlength="1000" placeholder="Message"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn--ghost" type="button" data-attach style="margin-right:auto"><span>Attach</span></button>
+      <button class="btn btn--ghost" type="button" data-close-modal>Discard</button>
+      <button class="btn btn--primary" type="submit"><span>Send</span></button>
+    </div>
+  </form>
+</dialog>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/pages/messages.js' %}" defer></script>
+{% endblock %}

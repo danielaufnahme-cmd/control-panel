@@ -1,0 +1,226 @@
+/* ==========================================================================
+   CONTROL PANEL ANIMATIONS (internal codename Nimbus)
+   --------------------------------------------------------------------------
+   1. Reveal primitives      [data-animate] and [data-stagger]
+   2. Page enter             main.page
+   3. View Transitions       cross-document page changes + theme reveal
+   4. Keyframe library       reused by components.css and motion.js
+   5. Reduced motion         final safety net
+
+   Principles used everywhere:
+   * Enters use --ease-out-expo (fast start, soft landing). Exits use
+     --ease-in and are shorter than enters.
+   * Crisp, never cute: no overshoot, no bounces, no idle/looping
+     animation (only loading spinners/skeletons loop, while loading).
+     Travel distances are small (4-16px).
+   * Only animate `transform` and `opacity` for anything that moves
+     (GPU friendly, no layout thrash). Width is used only for progress
+     bars and the sidebar, where it is the point.
+   * Reveal animations use `animation-fill-mode: backwards` (NOT forwards)
+     so that once they finish, the element's normal styles win again and
+     hover transforms (e.g. .hover-lift) keep working.
+   ========================================================================== */
+
+
+/* ==========================================================================
+   1. REVEAL PRIMITIVES
+   --------------------------------------------------------------------------
+   <div data-animate="fade-up">          single element
+   <div data-stagger>                    each DIRECT child reveals in turn
+   <div data-stagger="scale-in">         ... with a specific animation
+
+   motion.js adds `.is-revealed` when the element scrolls into view and
+   sets `--i` (child index) on stagger children. Optional knobs:
+     data-animate-delay="120"   extra delay in ms   (sets --delay)
+     data-stagger-delay="60"    ms between children (sets --stagger)
+
+   Hidden states only apply when <html> has the `js` class (set in the
+   head script), so content is never invisible without JavaScript.
+   ========================================================================== */
+.js [data-animate]:not(.is-revealed),
+.js [data-stagger]:not(.is-revealed) > * {
+  opacity: 0;
+}
+
+[data-animate].is-revealed,
+[data-stagger].is-revealed > * {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out-quart);
+  animation-fill-mode: backwards;
+}
+[data-animate].is-revealed {
+  animation-delay: var(--delay, 0ms);
+}
+[data-stagger].is-revealed > * {
+  animation-delay: calc(var(--delay, 0ms) + var(--i, 0) * var(--stagger));
+}
+
+/* Animation type. Default for data-stagger is fade-up. */
+[data-animate="fade-up"].is-revealed,
+[data-stagger=""].is-revealed > *,
+[data-stagger="fade-up"].is-revealed > *    { animation-name: nimbus-fade-up; }
+[data-animate="fade-in"].is-revealed,
+[data-stagger="fade-in"].is-revealed > *    { animation-name: nimbus-fade-in; animation-duration: var(--dur-base); }
+[data-animate="scale-in"].is-revealed,
+[data-stagger="scale-in"].is-revealed > *   { animation-name: nimbus-scale-in; }
+[data-animate="slide-left"].is-revealed,
+[data-stagger="slide-left"].is-revealed > * { animation-name: nimbus-slide-left; }
+[data-animate="slide-right"].is-revealed,
+[data-stagger="slide-right"].is-revealed > *{ animation-name: nimbus-slide-right; }
+[data-animate="blur-in"].is-revealed,
+[data-stagger="blur-in"].is-revealed > *    { animation-name: nimbus-blur-in; }
+
+@keyframes nimbus-fade-up    { from { opacity: 0; transform: translateY(var(--move-md)); } }
+@keyframes nimbus-fade-in    { from { opacity: 0; } }
+@keyframes nimbus-scale-in   { from { opacity: 0; transform: scale(0.98); } }
+@keyframes nimbus-slide-left { from { opacity: 0; transform: translateX(var(--move-lg)); } }
+@keyframes nimbus-slide-right{ from { opacity: 0; transform: translateX(calc(var(--move-lg) * -1)); } }
+@keyframes nimbus-blur-in    { from { opacity: 0; transform: translateY(var(--move-sm)); } }   /* legacy name: no blur */
+
+/* Sparklines simply fade in with their card (no drawn-line flourish). */
+.sparkline svg {
+  animation: nimbus-fade-in var(--dur-slow) var(--ease-out-quart) backwards;
+  animation-delay: calc(var(--delay, 0ms) + var(--i, 0) * var(--stagger) + 80ms);
+}
+.sparkline-dot { display: none; }   /* no end dot: the line is enough */
+.js [data-stagger]:not(.is-revealed) .sparkline svg,
+.js [data-animate]:not(.is-revealed) .sparkline svg { animation-play-state: paused; }
+
+
+/* ==========================================================================
+   2. PAGE ENTER
+   Every page's <main class="page"> fades/slides up once on load. Cards
+   inside then cascade via [data-stagger]. Total feel: ~250ms + stagger.
+   ========================================================================== */
+.page { animation: nimbus-page-enter var(--dur-base) var(--ease-out-expo) backwards; }
+@keyframes nimbus-page-enter { from { opacity: 0; transform: translateY(var(--move-sm)); } }
+
+
+/* ==========================================================================
+   3. VIEW TRANSITIONS
+   --------------------------------------------------------------------------
+   a) Cross-document (normal link navigation between Django pages).
+      Supported in Chromium 126+ / Safari 18.2+. Other browsers just load
+      the page normally and the page-enter animation above still plays.
+      Named elements are morphed independently of the page:
+        sidebar          - stays put (no flicker)
+        nav-pill         - slides from the old item to the new one
+        page             - old page fades out fast, new page uses its own
+                           live page-enter + stagger animation.
+   ========================================================================== */
+@view-transition { navigation: auto; }
+
+.sidebar   { view-transition-name: sidebar; }
+.page      { view-transition-name: page; }
+
+::view-transition-group(*) {
+  animation-duration: var(--dur-base);
+  animation-timing-function: var(--ease-out-expo);
+}
+::view-transition-group(nav-pill) {
+  animation-duration: var(--dur-slow);
+  animation-timing-function: var(--ease-out-expo);
+}
+::view-transition-old(page) { animation: vt-fade-out var(--dur-fast) var(--ease-in) both; }
+::view-transition-new(page) { animation: none; }
+::view-transition-group(page) { animation: none; }
+
+@keyframes vt-fade-out  { to { opacity: 0; } }
+@keyframes vt-slide-out { to { opacity: 0; transform: translateY(-6px); } }
+@keyframes vt-slide-in  { from { opacity: 0; transform: translateY(6px); } }
+
+/* b) Theme switch: a plain crossfade of the whole page (theme.js).
+      While it runs we drop all view-transition-names so the WHOLE page is
+      one snapshot. */
+html.vt-theme * { view-transition-name: none !important; }
+html.vt-theme::view-transition-group(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out-quart); }
+html.vt-theme::view-transition-old(root),
+html.vt-theme::view-transition-new(root) { animation-duration: var(--dur-base); animation-timing-function: var(--ease-out-quart); }
+
+/* c) Fallback theme crossfade for browsers without the View Transitions API. */
+html.theme-fading *,
+html.theme-fading *::before,
+html.theme-fading *::after {
+  transition: background-color var(--dur-base) var(--ease-out-quart),
+              border-color var(--dur-base) var(--ease-out-quart),
+              color var(--dur-base) var(--ease-out-quart),
+              fill var(--dur-base), stroke var(--dur-base) !important;
+}
+
+
+/* ==========================================================================
+   4. KEYFRAME LIBRARY
+   ========================================================================== */
+
+/* Ripple: motion.js injects <span class="ripple"> at the pointer in .btn */
+.ripple {
+  position: absolute; z-index: -1; border-radius: 50%;
+  background: currentColor; opacity: 0.08; pointer-events: none;
+  transform: scale(0);
+  animation: ripple var(--dur-slow) var(--ease-out-quart) forwards;
+}
+@keyframes ripple { to { transform: scale(1); opacity: 0; } }
+
+/* Pop: Nimbus.pop(el) - something new appeared. Small fade/scale, no overshoot. */
+.is-popping { animation: pop var(--dur-base) var(--ease-out-expo); }
+@keyframes pop {
+  from { transform: scale(0.94); opacity: 0; }
+}
+/* Bump: Nimbus.bump(el) - "this value changed": a brief dim, no scaling. */
+.is-bumping { animation: bump var(--dur-slow) var(--ease-out-quart); }
+@keyframes bump { 30% { opacity: 0.45; } }
+
+/* Nimbus.shake(el) - invalid input. Legacy name: it does NOT shake (no
+   wiggle in this product). A muted ring flashes once and fades out. */
+.is-shaking { animation: attention var(--dur-data) var(--ease-out-quart); border-color: var(--danger) !important; }
+@keyframes attention {
+  from { box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 28%, transparent); }
+  to   { box-shadow: 0 0 0 3px transparent; }
+}
+
+@keyframes shimmer { to { transform: translateX(100%); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes menu-item-in { from { opacity: 0; transform: translateY(-2px); } }
+
+@keyframes toast-timer { to { transform: scaleX(0); } }
+
+/* Modal / drawer (motion.js toggles .is-closing before calling dialog.close()) */
+.modal[open] .modal-panel     { animation: modal-in var(--dur-base) var(--ease-out-expo); }
+.modal[open]::backdrop        { animation: nimbus-fade-in var(--dur-base) var(--ease-out-quart); }
+.modal.is-closing .modal-panel { animation: modal-out var(--dur-fast) var(--ease-in) forwards; }
+.modal.is-closing::backdrop    { animation: vt-fade-out var(--dur-fast) var(--ease-in) forwards; }
+@keyframes modal-in  { from { opacity: 0; transform: translateY(8px) scale(0.99); } }
+@keyframes modal-out { to   { opacity: 0; transform: translateY(4px); } }
+
+.drawer[open] .modal-panel     { animation: drawer-in var(--dur-slow) var(--ease-out-expo); }
+.drawer.is-closing .modal-panel { animation: drawer-out var(--dur-base) var(--ease-in) forwards; }
+@keyframes drawer-in  { from { transform: translateX(100%); } }
+@keyframes drawer-out { to   { transform: translateX(100%); } }
+
+/* Tab panels fade in when switched */
+[data-tab-panel].is-entering { animation: nimbus-fade-up var(--dur-base) var(--ease-out-expo); }
+
+/* Nav progress bar */
+@keyframes progress-load { from { transform: scaleX(0); } to { transform: scaleX(0.85); } }
+@keyframes progress-finish {
+  from { opacity: 1; transform: scaleX(0.7); }
+  60%  { opacity: 1; transform: scaleX(1); }
+  to   { opacity: 0; transform: scaleX(1); }
+}
+
+/* Logo: static. No tilt, no draw-in, no sparkle. Icons never rotate or morph. */
+
+
+/* ==========================================================================
+   5. REDUCED MOTION safety net
+   Tokens already collapse to ~1ms; this kills loops and view transitions.
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+  *, *::before, *::after {
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton::after { animation: none !important; }
+}
