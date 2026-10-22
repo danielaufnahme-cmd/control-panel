@@ -134,7 +134,7 @@ To take screenshots without your logo, start the server with `CONTROL_PANEL_PLAC
 The main reason this repo exists is to let a coding agent (Claude Code, Cursor, Copilot, Codex, etc.) add the same motion system to **your** site. Give the agent this repo, either the link or a local clone next to your project, and paste:
 
 ```text
-Study <repo link>, especially docs/ANIMATIONS.md, static/css/tokens.css,
+Study https://github.com/danielaufnahme-cmd/control-panel, especially docs/ANIMATIONS.md, static/css/tokens.css,
 static/css/animations.css and static/js/motion.js. Then add the same motion
 system to my site:
 
@@ -158,12 +158,12 @@ animated and where.
 Smaller variants:
 
 ```text
-Using <repo link>'s docs/ANIMATIONS.md as the reference, add a theme toggle
+Using https://github.com/danielaufnahme-cmd/control-panel's docs/ANIMATIONS.md as the reference, add a theme toggle
 with the circular View Transition reveal and the sun/moon icon morph to my site.
 ```
 
 ```text
-Read <repo link>'s docs/ANIMATIONS.md section "FLIP filtering and sorting" and
+Read https://github.com/danielaufnahme-cmd/control-panel's docs/ANIMATIONS.md section "FLIP filtering and sorting" and
 make my product grid animate when filters change.
 ```
 
