@@ -7,7 +7,7 @@
 Control Panel is a complete admin dashboard (Overview, Analytics, Contacts, Projects, Messages, Settings) filled with invented placeholder data. It isn't a product. It's a **reference implementation**: every interaction animates the way a polished work tool should, quickly and with intent, without getting in the way. It's built from plain CSS custom properties and a few small vanilla JS files, so you can lift it into any stack.
 
 - **Calm, fast, professional .** Motion uses crisp ease-out curves and 150–400 ms durations, with no overshoot, no bounce and no looping idle animation.
-- **Token-driven.** Durations, easings and distances are CSS variables. Change one token and the whole UI follows.
+- **Token-driven.** Durations, easings and distances are CSS variables. Change one token and the whole UI changes too.
 - **Accessible.** `prefers-reduced-motion` sets every token to ~0, so motion turns off with no per-component work.
 - **No build step and no runtime CDNs.** Vanilla JS, plain CSS, and Chart.js vendored locally.
 - **Light mode by default.** A dark mode toggle sits at the bottom left with a circular reveal.
